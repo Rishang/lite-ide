@@ -1,0 +1,25 @@
+version: '3'
+tasks:
+  dev:
+    desc: Build UI and run Go backend for development
+    deps: [build-ui]
+    cmds:
+      - task: backend
+    silent: false
+  build-ui:
+    desc: Build the Next.js UI to static files
+    dir: ui
+    cmds:
+      - pnpm install
+      - pnpm build
+  backend:
+    desc: Run Go backend server
+    dir: src
+    cmds:
+      - go run ./cmd/server
+  build:
+    desc: Build single binary with embedded UI
+    deps: [build-ui]
+    dir: src
+    cmds:
+      - go build -o ../boxy-ide ./cmd/server
