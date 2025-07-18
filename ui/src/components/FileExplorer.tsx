@@ -1,7 +1,7 @@
 // FileExplorer.tsx - Updated with SSE support
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { FileNode } from '@/types/file'
 import { 
   Folder, 
@@ -138,7 +138,7 @@ export function FileExplorer({
   // Get file icon based on extension
   const getFileIcon = useCallback((fileName: string) => {
     const ext = fileName.split('.').pop()?.toLowerCase() || ''
-    const iconMap: Record<string, JSX.Element> = {
+    const iconMap: Record<string, React.JSX.Element> = {
       'js': <Code className="w-4 h-4 text-yellow-400" />,
       'jsx': <Code className="w-4 h-4 text-yellow-400" />,
       'ts': <Code className="w-4 h-4 text-blue-400" />,

@@ -1,516 +1,260 @@
-# Task Creating a WEB IDE
+# Task: Creating a WEB IDE
 
-Here is a complete, check-list–style TODO that covers everything we’ll need to build your clean, lite-looking web IDE in Next.js and GO. Review it; when you’re happy just reply and I’ll start generating the code.
+Here is a complete, check-list–style TODO that covers everything we'll need to build your clean, lite-looking web IDE in Next.js and GO. Review it; when you're happy just reply and I'll start generating the code.
 
 Go code in `src` and Next.js code in `ui` directory.
 
+## Current Implementation Status
 
+The Lite IDE is now a **fully functional single-binary web IDE** with the following architecture:
 
-Below is a **from-scratch** repo layout and all first-pass files that let you drop the Node / Next runtime **and the compiled `monaco` only lives in the browser**.  
-The result is a **single Go binary (< 8 MB)** that  
-- serves the Web UI  
-- provides REST endpoints for the file tree (read/write)  
-- stores everything in **memory** for now (swap in persistence with 3 lines later).
-Complete TODO + final file-tree for the **language-aware, portable, open-any-path** Go IDE  
-(⚙️ colour theme Monokai fork per language + Py/JS/TS/CSS styles + full CRUD)  
+### Backend (Go)
+- **Single binary** (< 8 MB) that serves both Web UI and REST API
+- **Real filesystem integration** with file watching via fsnotify
+- **WebSocket terminal** with PTY support
+- **Server-Sent Events** for real-time file tree updates
+- **CORS support** for cross-origin requests
 
-========  TODO LIST  =========================================================
-Phase 0  – Skeleton & single-binary
-[ ] go.mod `lite-ide` + `//go:embed ui`  
-[ ] Dockerfile min-4-stage (scratch size < 15 MB)  
-[ ] One Git tag `v0.1.0` set  
+### Frontend (React/Next.js)
+- **Monaco Editor** with syntax highlighting and themes
+- **Resizable panels** for file explorer and terminal
+- **Tab management** with dirty state tracking
+- **Configurable UI** via environment variables
+- **Keyboard shortcuts** (Ctrl+S, Ctrl+`)
+- **Dark theme** with modern UI
 
-Phase 1  – REST API contract (path is URL-param **p**)
+========  COMPLETED FEATURES  ================================================
+Phase 0  – Skeleton & single-binary ✅
+[✅] go.mod `lite-ide` + `//go:embed ui/build`  
+[✅] Dockerfile min-4-stage (scratch size < 15 MB)  
+[✅] One Git tag `v0.1.0` set  
+
+Phase 1  – REST API contract (path is URL-param **root**) ✅
 ──────────────────────────────────────────────────────
-GET    /api/files?root={{p}}                   → JSON-tree  
-GET    /api/files/read?root={{p}}&path=/foo    → 200/file or 404  
-PUT    /api/files/write?root={{p}}&path=/foo   → 204 (create/overwrite)  
-DELETE /api/files/remove?root={{p}}&path=/foo → 204  
-POST   /api/files   /rename?o=/old&n=/new      → 204  
-POST   /api/files   /mkdir?path=/folder        → 204  
+GET    /api/files?root={{root}}                   → JSON-tree  
+GET    /api/files{path}?root={{root}}             → 200/file or 404  
+PUT    /api/files{path}?root={{root}}             → 204 (create/overwrite)  
+DELETE /api/files{path}?root={{root}}             → 204  
+PATCH  /api/files/rename?root={{root}}&old={old}&new={new} → 204  
+POST   /api/files/mkdir?root={{root}}&path={path} → 204  
+GET    /api/watch?root={{root}}                   → SSE for real-time updates  
+POST   /api/expand?root={{root}}                  → Expand folder for lazy loading  
 
-Phase 2  – Go backend  
-a. `internal/api/router.go`  – httpmux + CORS  
-b. `internal/vfs/realfs.go` – use `os` to load root at start-up  
-   → threads `root:=r.URL.Query().Get("root")| default current-dir`  
-c. live reload of tree when folders added externally (optional fsnotify)  
+Phase 2  – Go backend ✅
+a. `src/main.go`  – HTTP server with CORS + WebSocket + SSE  
+b. `src/internal/vfs/vfs.go` – Real filesystem operations with skip directories  
+c. `src/internal/terminal/terminal.go` – WebSocket PTY terminal  
+d. `src/internal/web/embed.go` – Embedded UI + API handlers  
+e. Live reload of tree when folders added externally (fsnotify) ✅  
 
-Phase 3  – UI Monaco **language colourisation**
-a. themes: `themes/monokai.json`, `themes/monokai-light.json`  
-b. for each .ext → map to monaco-languages token  
-   py → python, ts/js → typescript, css/css → css, etc.  
-c. Dynamic snippet to load correct theme via `@monaco/loader`  
+Phase 3  – UI Monaco **language colourisation** ✅
+a. Dynamic language detection based on file extensions  
+b. Monaco editor with syntax highlighting  
+c. Dark theme integration  
+d. Language-specific themes via Monaco loader  
 
-Phase 4  – CRUD glue on FE side  
+Phase 4  – CRUD glue on FE side ✅
 a. FileExplorer:  
-   - NEW FILE / NEW FOLDER context menu  
-   - inline RENAME with `<input>`  
-b. TabBar: *dirty* bullet; cmd+s PUT /write  
-c. Dialog on DELETE/RENAME/MOVE with API calls  
+   - File tree with lazy loading  
+   - Context menu for file operations  
+   - Real-time updates via SSE  
+b. TabBar: Dirty state tracking with visual indicators  
+c. Editor: Monaco integration with save on Ctrl+S  
+d. Terminal: WebSocket PTY with resize support  
 
-Phase 5  – Docs & nice-to-have  
-[ ] README: `docker run -p 3000:3000 -v ~/Downloads:/data ghcr.io/lite-ide:latest`  
-[ ] CSS custom-props `--accent-python`, `--accent-js` auto-applied by file ext via `<body data-lang=js>`  
-[ ] Keyboard shortcuts modal (F1)  
-=============================================================================
+Phase 5  – Advanced Features ✅
+[✅] Resizable panels (file explorer + terminal)  
+[✅] Configurable panel visibility via environment variables  
+[✅] Keyboard shortcuts (Ctrl+` for terminal toggle)  
+[✅] Server-Sent Events for real-time file watching  
+[✅] WebSocket terminal with PTY support  
+[✅] Skip directories (node_modules, .git, etc.)  
+[✅] Error handling and reconnection logic  
 
-========  FINAL FILE / FOLDER TREE  ==========================================
+========  CURRENT FILE / FOLDER TREE  ==========================================
 lite-ide/
 │  go.mod
 │  Dockerfile
-│  .air.toml          # optional live reload (air)
+│  Taskfile.yml
+│  README.md
 │
-├─cmd/server/
-│  └─main.go          # flags: -root dynamic root
-│
-├─internal/
-│   ├─api/
-│   │  ├─router.go
-│   │  ├─handler_read.go
-│   │  ├─handler_write.go
-│   │  ├─handler_crud.go
-│   │  └─handler_rename.go
-│   │
-│   ├─vfs/
-│   │  ├─base.go            // FileNode
-│   │  ├─realfs.go          // disk operations
-│   │  └─watcher.go         // fsnotify optional
-│   │
-│   ├─langs/
-│   │  └─color_map.json     // {".py":"python",".ts":"typescript"}
-│   │
-│   └─web/
-│       ├─embed.go          // go:embed ui/*
-│       └─middleware.go
+├─src/
+│  ├─main.go                    # HTTP server entry point
+│  ├─go.mod
+│  ├─go.sum
+│  └─internal/
+│     ├─vfs/
+│     │  └─vfs.go              # Real filesystem operations
+│     ├─web/
+│     │  └─embed.go            # Embedded UI + API handlers
+│     └─terminal/
+│        └─terminal.go         # WebSocket PTY terminal
 │
 ├─ui/
-│   ├─
+│  ├─src/
+│  │  ├─app/
+│  │  │  ├─layout.tsx          # Root layout
+│  │  │  ├─page.tsx            # Main IDE component
+│  │  │  └─globals.css         # Global styles
+│  │  ├─components/
+│  │  │  ├─Editor.tsx          # Monaco editor wrapper
+│  │  │  ├─FileExplorer.tsx    # File tree component
+│  │  │  ├─TabBar.tsx          # Tab management
+│  │  │  ├─Terminal.tsx        # xterm.js wrapper
+│  │  │  ├─TerminalPanel.tsx   # Terminal panel
+│  │  │  └─ResizablePanel.tsx  # Resizable panel component
+│  │  ├─types/
+│  │  │  └─file.ts             # FileNode type definitions
+│  │  ├─utils/
+│  │  │  ├─config.ts           # Configuration system
+│  │  │  └─utils.ts            # Utility functions
+│  │  └─lib/
+│  │     └─common.ts           # Language detection & themes
+│  ├─package.json
+│  ├─next.config.js
+│  ├─tailwind.config.js
+│  └─tsconfig.json
 │
-├─scripts/
-│   └─build.sh
-└─docs/
-    ├─README.md
-    └─dev.md
+└─build/                        # Output directory for binary
+   └─ide                        # Single binary executable
 =============================================================================
 
-CMD FLOW (browser) for `localhost:3000/p?=/home/user/Downloads`
-1. Redirect → SPA served at `/` (static)  
-2. `main.js` reads `new URLSearchParams(location.search).get('p')`  
-3. uses `/api/files?root=/home/user/Downloads` to build tree  
-4. All subsequent CRUD URLs include `root` exactly as the backend does.
+========  API ENDPOINTS IMPLEMENTATION  ======================================
+Backend API (src/internal/web/embed.go):
 
-The GitHub Action will tag releases and publish docker run：`docker run -p 3000:3000 -v /home/user/Downloads:/data lite-ide:latest`
-Everything is copy-pastable; do a `git init .` first or just mkdir ― both work.
+1. **File Tree**: `GET /api/files?root={path}`
+   - Returns JSON tree of files and folders
+   - Skips node_modules, .git, .next, etc.
+   - Supports lazy loading for large directories
 
-────────────────────────────────────────
-1.  Root tree
-.
-├── go.mod
-├── cmd/
-│   └── server/
-│       └── main.go
-├── internal/
-│   ├── vfs/          # in-memory file system
-│   │   └── vfs.go
-│   └── web/          # static ui served via go:embed
-│       └── embed.go
-└── ui/               # a micro front-end that embeds Monaco
-        ├── 
-1.  go.mod
-```go
-module lite-ide
+2. **File Operations**: 
+   - `GET /api/files{path}?root={path}` - Read file content
+   - `PUT /api/files{path}?root={path}` - Write file content
+   - `DELETE /api/files{path}?root={path}` - Delete file/folder
+   - `PATCH /api/files/rename?root={path}&old={old}&new={new}` - Rename
+   - `POST /api/files/mkdir?root={path}&path={folder}` - Create folder
 
-go 1.22
-```
-────────────────────────────────────────
-3.  in-memory file system  internal/vfs/vfs.go
-```go
-package vfs
+3. **Real-time Updates**: `GET /api/watch?root={path}`
+   - Server-Sent Events for file tree updates
+   - Uses fsnotify for file system monitoring
+   - Automatic reconnection on connection loss
 
-import (
-	"encoding/json"
-	"os"
-	"path/filepath"
-	"strings"
-	"sync"
-)
+4. **Terminal**: `/terminal` (WebSocket)
+   - PTY-based terminal with shell support
+   - Resize support via WebSocket messages
+   - Environment variable support for shell selection
 
-// FileNode mirrors previous TS model
-type FileNode struct {
-	Name     string      `json:"name"`
-	Type     string      `json:"type"` // "file" | "folder"
-	Path     string      `json:"path"`
-	Children []*FileNode `json:"children,omitempty"`
-}
+========  FRONTEND FEATURES  ===============================================
+UI Components (ui/src/):
 
-// static seed (same as original sample)
-var tree = []*FileNode{
-	{Name: "project", Type: "folder", Path: "/project", Children: []*FileNode{
-		{Name: "index.html", Type: "file", Path: "/project/index.html"},
-		{Name: "main.js", Type: "file", Path: "/project/main.js"},
-		{Name: "styles.css", Type: "file", Path: "/project/styles.css"},
-		{Name: "lib", Type: "folder", Path: "/project/lib", Children: []*FileNode{
-			{Name: "utils.ts", Type: "file", Path: "/project/lib/utils.ts"},
-		}},
-	}},
-}
+1. **Main IDE** (`app/page.tsx`):
+   - Configurable panel visibility
+   - Resizable file explorer and terminal
+   - Keyboard shortcuts (Ctrl+`, Ctrl+S)
+   - SSE connection for real-time updates
 
-var contents = map[string]string{
-	"/project/index.html": "<!doctype html>\n<title>Hello</title>\n<h1>Go IDE</h1>\n",
-	"/project/main.js":    "console.log('hello from the Go server');\n",
-	"/project/styles.css": "* { box-sizing: border-box; }\n",
-	"/project/lib/utils.ts": "export const sum=(a:number,b:number)=>a+b;\n",
-}
+2. **File Explorer** (`components/FileExplorer.tsx`):
+   - Tree view with folder expansion
+   - Context menu for file operations
+   - Minimize/expand functionality
+   - Real-time updates via SSE
 
-var (
-	mu = &sync.RWMutex{}
-)
+3. **Editor** (`components/Editor.tsx`):
+   - Monaco editor integration
+   - Syntax highlighting
+   - Language detection
+   - Save on Ctrl+S
 
-// GetTree returns a deep clone (read only)
-func GetTree() []*FileNode {
-	mu.RLock()
-	defer mu.RUnlock()
-	var out []*FileNode
-	_ = json.Unmarshal(jsonClone(tree), &out)
-	return out
-}
+4. **Terminal** (`components/Terminal.tsx`):
+   - xterm.js integration
+   - WebSocket connection to PTY
+   - Resize support
+   - Focus management
 
-func jsonClone(src interface{}) []byte {
-	b, _ := json.Marshal(src)
-	return b
-}
+5. **Configuration** (`utils/config.ts`):
+   - Environment variable support
+   - Panel visibility flags
+   - API endpoint configuration
 
-// ReadFile contents
-func ReadFile(path string) (string, bool) {
-	mu.RLock()
-	defer mu.RUnlock()
-	c, ok := contents[path]
-	return c, ok
-}
+========  CONFIGURATION SYSTEM  ============================================
+Environment Variables:
 
-// WriteFile creates / overwrites
-func WriteFile(path, data string) {
-	mu.Lock()
-	defer mu.Unlock()
-	contents[path] = data
-	ensureTreeNode(path) // coherence (mkdir silently)
-}
-
-// prune leading slash helper
-func inclusiveDir(p string) string {
-	dir := filepath.Dir(p)
-	if dir == "/" {
-		dir = ""
-	}
-	return dir
-}
-
-// ensureTreeNode keeps parent folders in tree (very crude)
-func ensureTreeNode(path string) {
-	dir := inclusiveDir(path)
-	if dir != "" {
-		ensureTreeNode(dir) // recurse
-	}
-	// node itself
-	for _, n := range tree { treeInsert(n, dir, path) }
-}
-
-func treeInsert(root *FileNode, dir, path string) {
-	if root.Type != "folder" {
-		return
-	}
-	for _, ch := range root.Children {
-		if ch.Path == dir {
-			treeInsert(ch, dir, path)
-			return
-		}
-	}
-	// create new file node under dir
-	parts := strings.Split(path, "/")
-	name := parts[len(parts)-1]
-	newNode := &FileNode{
-		Name: name,
-		Type: "file",
-		Path: path,
-	}
-	root.Children = append(root.Children, newNode)
-}
-```
-────────────────────────────────────────
-4.  static UI embedder  internal/web/embed.go
-```go
-package web
-
-import (
-	"embed"
-	"io/fs"
-	"net/http"
-)
-
-//go:embed *
-var uiFS embed.FS
-
-func Handlers() (api http.Handler, web http.Handler) {
-	// 1. REST API wrapper
-	api = http.StripPrefix("/api", http.HandlerFunc(apiHandler))
-
-	// 2. SPA catch-all – drop 'ui' root dir name
-	sub, _ := fs.Sub(uiFS, ".")
-	web = http.StripPrefix("/", http.FileServer(http.FS(sub)))
-	return
-}
-
-func apiHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("content-type", "application/json")
-	switch r.URL.Path {
-	case "/files":
-		switch r.Method {
-		case "GET":
-			json.NewEncoder(w).Encode(vfs.GetTree())
-		default:
-			http.NotFound(w, r)
-		}
-	case "/files/":
-		http.NotFound(w, r)
-	default: // files/*path
-		path := r.URL.Path
-		if strings.HasPrefix(path, "/files") {
-			path = strings.TrimPrefix(path, "/files")
-		}
-		switch r.Method {
-		case "GET":
-			body, ok := vfs.ReadFile(path)
-			if !ok {
-				http.NotFound(w, r)
-				return
-			}
-			w.Write([]byte(body))
-		case "PUT":
-			buf := new(strings.Builder)
-			io.Copy(buf, r.Body)
-			vfs.WriteFile(path, buf.String())
-			w.WriteHeader(http.StatusNoContent)
-		default:
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		}
-	}
-}
-```
-────────────────────────────────────────
-5.  server entrypoint  cmd/server/main.go
-```go
-package main
-
-import (
-	"log"
-	"net/http"
-
-	"lite-ide/internal/web"
-)
-
-func main() {
-	apiH, uiH := web.Handlers()
-
-	mux := http.NewServeMux()
-	mux.Handle("/api/", apiH)
-	mux.Handle("/", uiH)
-
-	port := ":3000"
-	log.Printf("Go IDE server listening %s", port)
-	log.Fatal(http.ListenAndServe(port, mux))
-}
-```
-────────────────────────────────────────
-6.  Drop-in UI files in `ui/`
-All served statically; lodash not required, Monaco loaded from CDN to keep bundle < 10 KB.
-
-ui/index.html
-```html
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <title>lite-ide (Go)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <link rel="stylesheet" href="style.css"/>
-  <script src="https://unpkg.com/monaco-editor/min/vs/loader.js"></script>
-</head>
-<body>
-  <div class="root">
-    <aside id="explorer" class="panel"></aside>
-    <section class="editor-area">
-      <div id="tab-bar" class="panel"></div>
-      <div id="editor" class="panel"></div>
-    </section>
-  </div>
-  <script type="module" src="main.js"></script>
-</body>
-</html>
-```
-
-ui/main.js
-```js
-import {getTree, readFile, writeFile} from './client.js';
-
-const store = {
-  tree: [],
-  tabs: new Map(),         // path -> {content,dirty}
-  active: null
-};
-
-await refreshTree();
-initKeys();
-
-document.getElementById('editor').addEventListener('keydown', async (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-    e.preventDefault();
-    if (store.active) {
-      await writeFile(store.active, store.tabs.get(store.active).content);
-      markClean(store.active);
-    }
-  }
-});
-
-async function refreshTree () {
-  store.tree = await getTree();
-  renderExplorer();
-}
-
-function renderExplorer() {
-  const list = document.getElementById('explorer');
-  list.innerHTML = `
-    <b class='label'>Files</b>
-    <ul>${recurse(store.tree)}</ul>
-  `;
-  list.querySelectorAll('li[data-path]').forEach(li => li.onclick = openFileClient);
-}
-
-function recurse(arr) {
-  return arr.map(n => n.type === 'folder'
-      ? `<li><b>${n.name}</b><ul>${recurse(n.children||[])}</ul></li>`
-      : `<li data-path="${n.path}">${n.name}</li>`).join('');
-}
-
-async function openFileClient({target}) {
-  const path = target.dataset.path;
-  if (!path) return;
-  const content = await readFile(path);
-  store.tabs.set(path, {content, dirty: false});
-  store.active = path;
-  renderTabs();
-  initEditor(content, path);
-}
-
-function markClean(path) {
-  if (!store.tabs.has(path)) return;
-  store.tabs.get(path).dirty = false;
-}
-
-function renderTabs () {
-  const bar = document.getElementById('tab-bar');
-  bar.innerHTML = [...store.tabs.keys()]
-    .map(p => `<span class="tab ${p===store.active?'active':''}" data-target="${p}">${p.split('/').pop()}${store.tabs.get(p).dirty?' *':''}<button>X</button></span>`).join('');
-  bar.onclick = e => {
-    if (e.target.tagName === 'BUTTON') closeTab(e.target.closest('span').dataset.target);
-    else if (e.target.classList.contains('tab')) selectTab(e.target.dataset.target);
-  };
-}
-
-function selectTab(path) {
-  if (!store.tabs.has(path)) return;
-  store.active = path;
-  initEditor(store.tabs.get(path).content, path);
-  renderTabs();
-}
-
-function closeTab(path) {
-  store.tabs.delete(path);
-  if (store.active === path) store.active = null;
-  renderTabs();
-}
-
-let editor;
-function initEditor(content, path) {
-  if (!editor) {
-    editor = monaco.editor.create(document.getElementById('editor'), {
-      theme: 'vs-dark',
-      automaticLayout: true,
-      minimap: {enabled:false}
-    });
-  }
-  const ext = (path.split('.').pop() || 'txt').toLowerCase();
-  monaco.editor.setModelLanguage(editor.getModel(), ext);
-  editor.setValue(content);
-  editor.onDidChangeModelContent(() => {
-    store.tabs.get(store.active).content = editor.getValue();
-    store.tabs.get(store.active).dirty = true;
-    renderTabs();
-  });
-}
-
-function initKeys() {
-  // other global shortcuts can live here
-}
-```
-
-ui/client.js
-```js
-/* tiny fetch wrappers */
-export const getTree = async () => (await fetch('/api/files')).json();
-export const readFile = async path => (await fetch('/api/files' + path)).text();
-
-export const writeFile = async (path, data) => {
-  await fetch('/api/files' + path, {method: 'PUT', body: data});
-};
-```
-
-ui/style.css
-```css
-body, html { margin: 0; height: 100%; font-family: monospace; }
-.root { display: flex; height: 100%; }
-.panel { border-right: 1px solid #475569; }
-#explorer { width: 260px; padding: 8px; box-sizing: border-box; }
-#tab-bar { height: 30px; display: flex; background:#1e293b; }
-.tab      { padding: 0 6px; border-right: 1px solid #475569; cursor: pointer; }
-.tab.active { background: #0f172a; }
-#editor { flex: 1; }
-.label  { color: #06b6d4; font-weight: bold; font-size: 12px; margin-bottom: 6px; display: block;}
-ul      { list-style: none; padding-left: 10px; cursor: pointer; }
-li b    { color: #94a3b8; }
-li[data-path]:hover { background: #475569; border-radius: 2px; }
-```
-────────────────────────────────────────
-7.  Build & run
 ```bash
-# compile & run on host
-go mod tidy
-go run ./cmd/server
+# API endpoint for backend communication
+NEXT_PUBLIC_API_ENDPOINT=http://localhost:3000
 
-# 𝐎𝐑 build release binary
-CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o ide ./cmd/server
+# WebSocket host for terminal connections  
+NEXT_PUBLIC_WS_HOST=ws://localhost:3000
 
-# docker minimal
+# Panel visibility (set to "false" to hide)
+NEXT_PUBLIC_SHOW_EDITOR=true
+NEXT_PUBLIC_SHOW_TERMINAL=true
+```
+
+Panel Logic:
+- **showEditor**: Controls both file explorer and editor visibility
+- **showTerminal**: Controls terminal panel visibility
+- When editor is hidden, terminal takes full height
+- File explorer only shows when editor is present
+
+========  BUILD SYSTEM  ===================================================
+Taskfile.yml Commands:
+
+- `task ui:dev` - Run the Next.js UI (development)
+- `task ui:build` - Build the Next.js UI to static files
+- `task go:build` - Build single binary with embedded UI
+- `task go:dev` - Run the built binary (development)
+- `task build` - Build the project (ui:build + go:build)
+
+Build Process:
+1. Next.js UI builds to `ui/out/`
+2. Go embeds `ui/out/` into binary
+3. Single binary created in `build/ide`
+
+========  DEPLOYMENT  =====================================================
+Docker Support:
+```bash
 docker build -t lite-ide .
 docker run -p 3000:3000 lite-ide
 ```
-Dockerfile (24 lines total)
-```
-FROM golang:1.22-alpine AS build
-WORKDIR /src
-COPY go.mod go.sum ./
-RUN go mod download
-COPY . .
-RUN CGO_ENABLED=0 go build -ldflags "-w -s" -o /ide ./cmd/server
 
-FROM scratch
-COPY --from=build /ide /ide
-EXPOSE 3000
-ENTRYPOINT ["/ide"]
+Single Binary:
+```bash
+task build
+./build/ide
 ```
-────────────────────────────────────────
-Result
-• Single 5-8 MB static binary, no Node runtime.  
-• Container image ~13 MB (scratch or distroless).  
-• RAM 6–20 MB RSS under normal use, CPU <5 % idle.
+
+Development:
+```bash
+task ui:dev  # Terminal 1
+task go:dev  # Terminal 2
+```
+
+========  FUTURE ENHANCEMENTS  ===========================================
+Potential improvements:
+
+1. **Multi-language Support**:
+   - Enhanced language detection
+   - Language-specific snippets
+   - Custom themes per language
+
+2. **Advanced Features**:
+   - Git integration
+   - Search and replace
+   - Multiple cursors
+   - Code formatting
+
+3. **Performance**:
+   - Virtual scrolling for large file trees
+   - Lazy loading for large files
+   - Memory optimization
+
+4. **User Experience**:
+   - Settings panel
+   - Keyboard shortcuts modal
+   - File search
+   - Command palette
+
+The Lite IDE is now a fully functional, single-binary web IDE with real filesystem integration, terminal support, and a modern React UI. It provides a complete development environment in a portable executable.
 
 
