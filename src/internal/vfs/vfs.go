@@ -19,6 +19,24 @@ var (
 	mu = &sync.RWMutex{}
 )
 
+// Directories to skip
+var skipDirs = map[string]bool{
+	"node_modules": true,
+	".git":         true,
+	".next":        true,
+	".pnpm":        true,
+	".vscode":      true,
+	".idea":        true,
+	"__pycache__":  true,
+	".nuxt":        true,
+	".venv":        true,
+	"venv":         true,
+	".pipenv":      true,
+	".pytest_cache": true,
+	".ruff_cache":  true,
+	".mypy_cache":  true,
+}
+
 // GetTree returns file tree from actual filesystem
 func GetTree(rootPath string) ([]*FileNode, error) {
 	if rootPath == "" {
@@ -31,14 +49,6 @@ func GetTree(rootPath string) ([]*FileNode, error) {
 			return err
 		}
 
-		// Skip hidden files and directories
-		if strings.HasPrefix(filepath.Base(path), ".") {
-			if info.IsDir() {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-
 		// Convert to relative path
 		relPath, err := filepath.Rel(rootPath, path)
 		if err != nil {
@@ -49,6 +59,25 @@ func GetTree(rootPath string) ([]*FileNode, error) {
 		if relPath == "." {
 			return nil
 		}
+
+		// Check if this path should be skipped
+		pathParts := strings.Split(relPath, string(filepath.Separator))
+		for _, part := range pathParts {
+			if skipDirs[part] {
+				if info.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+		}
+
+		// Skip hidden files and directories (except .gitignore, .dockerignore, etc.)
+		// if strings.HasPrefix(info.Name(), ".") && info.Name() != ".gitignore" && info.Name() != ".dockerignore" && info.Name() != ".env" {
+		// 	if info.IsDir() {
+		// 		return filepath.SkipDir
+		// 	}
+		// 	return nil
+		// }
 
 		node := &FileNode{
 			Name: info.Name(),
@@ -91,13 +120,26 @@ func addToParent(nodes []*FileNode, parentPath string, child *FileNode) {
 	}
 }
 
+// Helper to clean and validate a path
+func cleanAndValidatePath(p string) (string, error) {
+	p = strings.TrimPrefix(p, "/")
+	p = filepath.Clean(p)
+	if p == "." || p == "" {
+		return "", nil
+	}
+	if strings.HasPrefix(p, "..") {
+		return "", os.ErrPermission
+	}
+	return p, nil
+}
+
 // ReadFile reads actual file content
 func ReadFile(filePath, rootPath string) (string, error) {
-	// If filePath starts with rootPath, use it directly
-	if strings.HasPrefix(filePath, "/") {
-		filePath = strings.TrimPrefix(filePath, "/")
+	p, err := cleanAndValidatePath(filePath)
+	if err != nil {
+		return "", err
 	}
-	fullPath := filepath.Join(rootPath, filePath)
+	fullPath := filepath.Join(rootPath, p)
 	content, err := os.ReadFile(fullPath)
 	if err != nil {
 		return "", err
@@ -107,11 +149,11 @@ func ReadFile(filePath, rootPath string) (string, error) {
 
 // WriteFile writes to actual file
 func WriteFile(filePath, rootPath, content string) error {
-	// If filePath starts with rootPath, use it directly
-	if strings.HasPrefix(filePath, "/") {
-		filePath = strings.TrimPrefix(filePath, "/")
+	p, err := cleanAndValidatePath(filePath)
+	if err != nil {
+		return err
 	}
-	fullPath := filepath.Join(rootPath, filePath)
+	fullPath := filepath.Join(rootPath, p)
 
 	// Ensure directory exists
 	dir := filepath.Dir(fullPath)
@@ -124,21 +166,21 @@ func WriteFile(filePath, rootPath, content string) error {
 
 // DeleteFile deletes actual file or directory
 func DeleteFile(filePath, rootPath string) error {
-	// If filePath starts with rootPath, use it directly
-	if strings.HasPrefix(filePath, "/") {
-		filePath = strings.TrimPrefix(filePath, "/")
+	p, err := cleanAndValidatePath(filePath)
+	if err != nil {
+		return err
 	}
-	fullPath := filepath.Join(rootPath, filePath)
+	fullPath := filepath.Join(rootPath, p)
 	return os.RemoveAll(fullPath)
 }
 
 // CreateFile creates a new file
 func CreateFile(filePath, rootPath string) error {
-	// If filePath starts with rootPath, use it directly
-	if strings.HasPrefix(filePath, "/") {
-		filePath = strings.TrimPrefix(filePath, "/")
+	p, err := cleanAndValidatePath(filePath)
+	if err != nil {
+		return err
 	}
-	fullPath := filepath.Join(rootPath, filePath)
+	fullPath := filepath.Join(rootPath, p)
 
 	// Ensure directory exists
 	dir := filepath.Dir(fullPath)
@@ -157,25 +199,25 @@ func CreateFile(filePath, rootPath string) error {
 
 // CreateDirectory creates a new directory
 func CreateDirectory(dirPath, rootPath string) error {
-	// If dirPath starts with rootPath, use it directly
-	if strings.HasPrefix(dirPath, "/") {
-		dirPath = strings.TrimPrefix(dirPath, "/")
+	p, err := cleanAndValidatePath(dirPath)
+	if err != nil {
+		return err
 	}
-	fullPath := filepath.Join(rootPath, dirPath)
+	fullPath := filepath.Join(rootPath, p)
 	return os.MkdirAll(fullPath, 0755)
 }
 
 // RenameFile renames a file or directory
 func RenameFile(oldPath, newPath, rootPath string) error {
-	// If paths start with rootPath, use them directly
-	if strings.HasPrefix(oldPath, "/") {
-		oldPath = strings.TrimPrefix(oldPath, "/")
+	pOld, err := cleanAndValidatePath(oldPath)
+	if err != nil {
+		return err
 	}
-	if strings.HasPrefix(newPath, "/") {
-		newPath = strings.TrimPrefix(newPath, "/")
+	pNew, err := cleanAndValidatePath(newPath)
+	if err != nil {
+		return err
 	}
-	oldFullPath := filepath.Join(rootPath, oldPath)
-	newFullPath := filepath.Join(rootPath, newPath)
+	oldFullPath := filepath.Join(rootPath, pOld)
+	newFullPath := filepath.Join(rootPath, pNew)
 	return os.Rename(oldFullPath, newFullPath)
 }
- 

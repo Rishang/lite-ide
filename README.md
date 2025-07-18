@@ -1,7 +1,10 @@
-# Boxy IDE
+# Lite IDE
 
-A modern web-based IDE built with Go backend and TypeScript/React frontend, packaged as a single binary.
+A simple tiny web-based IDE built with Go backend and TypeScript/React frontend, packaged as a single binary.
 
+
+
+![](./.github/images/web.png)
 ## Features
 
 - **Single Binary**: Complete IDE in one executable
@@ -28,40 +31,25 @@ A modern web-based IDE built with Go backend and TypeScript/React frontend, pack
 task build
 
 # Run the IDE
-./boxy-ide
+./lite-ide
 ```
 
 Or use the task runner for development:
 
 ```bash
 # Development mode (with hot reload)
-task dev
+task ui:dev
+task go:dev
 ```
 
 ### Docker
 
 ```bash
 # Build Docker image
-docker build -t boxy-ide .
+docker build -t lite-ide .
 
 # Run container
-docker run -p 3000:3000 boxy-ide
-```
-
-## Development
-
-### Project Structure
-
-```
-├── src/                    # Go backend
-│   ├── cmd/server/        # Main server
-│   ├── internal/vfs/      # Virtual file system
-│   └── internal/web/      # Web handlers
-├── ui/                     # TypeScript frontend
-│   ├── src/app/           # Next.js app
-│   ├── src/components/    # React components
-│   └── out/               # Built static files
-└── scripts/               # Build scripts
+docker run -p 3000:3000 lite-ide
 ```
 
 ### Development Commands
@@ -78,7 +66,7 @@ task dev
 task build
 
 # Clean build artifacts
-rm -f boxy-ide
+rm -f lite-ide
 rm -rf ui/out
 rm -rf ui/node_modules
 ```

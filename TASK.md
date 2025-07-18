@@ -1,6 +1,6 @@
 # Task Creating a WEB IDE
 
-Here is a complete, check-list–style TODO that covers everything we’ll need to build your clean, boxy-looking web IDE in Next.js and GO. Review it; when you’re happy just reply and I’ll start generating the code.
+Here is a complete, check-list–style TODO that covers everything we’ll need to build your clean, lite-looking web IDE in Next.js and GO. Review it; when you’re happy just reply and I’ll start generating the code.
 
 Go code in `src` and Next.js code in `ui` directory.
 
@@ -16,7 +16,7 @@ Complete TODO + final file-tree for the **language-aware, portable, open-any-pat
 
 ========  TODO LIST  =========================================================
 Phase 0  – Skeleton & single-binary
-[ ] go.mod `boxy-ide` + `//go:embed ui`  
+[ ] go.mod `lite-ide` + `//go:embed ui`  
 [ ] Dockerfile min-4-stage (scratch size < 15 MB)  
 [ ] One Git tag `v0.1.0` set  
 
@@ -49,13 +49,13 @@ b. TabBar: *dirty* bullet; cmd+s PUT /write
 c. Dialog on DELETE/RENAME/MOVE with API calls  
 
 Phase 5  – Docs & nice-to-have  
-[ ] README: `docker run -p 3000:3000 -v ~/Downloads:/data ghcr.io/boxy-ide:latest`  
+[ ] README: `docker run -p 3000:3000 -v ~/Downloads:/data ghcr.io/lite-ide:latest`  
 [ ] CSS custom-props `--accent-python`, `--accent-js` auto-applied by file ext via `<body data-lang=js>`  
 [ ] Keyboard shortcuts modal (F1)  
 =============================================================================
 
 ========  FINAL FILE / FOLDER TREE  ==========================================
-boxy-ide/
+lite-ide/
 │  go.mod
 │  Dockerfile
 │  .air.toml          # optional live reload (air)
@@ -99,7 +99,7 @@ CMD FLOW (browser) for `localhost:3000/p?=/home/user/Downloads`
 3. uses `/api/files?root=/home/user/Downloads` to build tree  
 4. All subsequent CRUD URLs include `root` exactly as the backend does.
 
-The GitHub Action will tag releases and publish docker run：`docker run -p 3000:3000 -v /home/user/Downloads:/data boxy-ide:latest`
+The GitHub Action will tag releases and publish docker run：`docker run -p 3000:3000 -v /home/user/Downloads:/data lite-ide:latest`
 Everything is copy-pastable; do a `git init .` first or just mkdir ― both work.
 
 ────────────────────────────────────────
@@ -118,7 +118,7 @@ Everything is copy-pastable; do a `git init .` first or just mkdir ― both work
         ├── 
 1.  go.mod
 ```go
-module boxy-ide
+module lite-ide
 
 go 1.22
 ```
@@ -305,7 +305,7 @@ import (
 	"log"
 	"net/http"
 
-	"boxy-ide/internal/web"
+	"lite-ide/internal/web"
 )
 
 func main() {
@@ -330,7 +330,7 @@ ui/index.html
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <title>boxy-ide (Go)</title>
+  <title>lite-ide (Go)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <link rel="stylesheet" href="style.css"/>
   <script src="https://unpkg.com/monaco-editor/min/vs/loader.js"></script>
@@ -490,8 +490,8 @@ go run ./cmd/server
 CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o ide ./cmd/server
 
 # docker minimal
-docker build -t boxy-ide .
-docker run -p 3000:3000 boxy-ide
+docker build -t lite-ide .
+docker run -p 3000:3000 lite-ide
 ```
 Dockerfile (24 lines total)
 ```

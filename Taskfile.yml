@@ -1,25 +1,51 @@
-version: '3'
+version: "3"
 tasks:
-  dev:
-    desc: Build UI and run Go backend for development
-    deps: [build-ui]
+  ui:dev:
+    desc: Run the Next.js UI
+    dir: ui
     cmds:
-      - task: backend
-    silent: false
-  build-ui:
+      - pnpm dev
+
+  ui:build:
     desc: Build the Next.js UI to static files
     dir: ui
     cmds:
       - pnpm install
       - pnpm build
-  backend:
-    desc: Run Go backend server
-    dir: src
-    cmds:
-      - go run ./cmd/server
-  build:
+
+  go:build:
     desc: Build single binary with embedded UI
-    deps: [build-ui]
     dir: src
+    env:
+      GOOS: '{{.GOOS | default "linux"}}'
+      GOARCH: '{{.GOARCH | default "amd64"}}'
+      CGO_ENABLED: '0'
     cmds:
-      - go build -o ../boxy-ide ./cmd/server
+      - |
+        BUILD_DIR=internal/web/build
+        rm -rf $BUILD_DIR/*
+        mkdir -p $BUILD_DIR
+        cp -r ../ui/out/* $BUILD_DIR
+      - |
+        if [ "$CI" = "true" ]; then
+          BINARY_NAME="lite-ide-{{.GOOS | default "linux"}}-{{.GOARCH | default "amd64"}}"
+        else
+          BINARY_NAME="ide"
+        fi
+
+        if [ "{{.GOOS | default "linux"}}" = "windows" ]; then
+          BINARY_NAME="${BINARY_NAME}.exe"
+        fi
+        go build -ldflags="-s -w" -o ../build/$BINARY_NAME .
+
+  go:dev:
+    dir: ./src
+    desc: Run the built binary
+    cmds:
+      - go run main.go
+
+  build:
+    desc: Build the project
+    cmds:
+      - task: ui:build
+      - task: go:build

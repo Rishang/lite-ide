@@ -75,7 +75,6 @@ func New() (http.Handler, error) {
 					conn.WriteMessage(websocket.CloseMessage, []byte{})
 					return
 				}
-				log.Printf("Read %d bytes from PTY: %q", n, string(buf[:n]))
 				if err := conn.WriteMessage(websocket.BinaryMessage, buf[:n]); err != nil {
 					log.Printf("failed to write to websocket: %v", err)
 					return
@@ -91,12 +90,10 @@ func New() (http.Handler, error) {
 				return
 			}
 
-			log.Printf("Received websocket message type %d: %q", msgType, string(message))
-
 			if msgType == websocket.TextMessage {
 				var resizeMsg resizeMessage
 				if err := json.Unmarshal(message, &resizeMsg); err == nil && resizeMsg.Type == "resize" {
-					log.Printf("Resizing terminal to %dx%d", resizeMsg.Cols, resizeMsg.Rows)
+					// log.Printf("Resizing terminal to %dx%d", resizeMsg.Cols, resizeMsg.Rows)
 					if err := pty.Setsize(tty, &pty.Winsize{Rows: resizeMsg.Rows, Cols: resizeMsg.Cols}); err != nil {
 						log.Printf("failed to set pty size: %v", err)
 					}
@@ -104,12 +101,9 @@ func New() (http.Handler, error) {
 				}
 			}
 
-			log.Printf("Writing %d bytes to PTY: %q", len(message), string(message))
-			if n, err := tty.Write(message); err != nil {
+			if _, err := tty.Write(message); err != nil {
 				log.Printf("failed to write to pty: %v", err)
 				return
-			} else {
-				log.Printf("Successfully wrote %d bytes to PTY", n)
 			}
 		}
 	}), nil

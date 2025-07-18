@@ -1,0 +1,128 @@
+name: Release
+
+on:
+  release:
+    types: [published, edited]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    strategy:
+      matrix:
+        include:
+          - name: linux-amd64
+            goos: linux
+            goarch: amd64
+            binary_name: lite-ide-linux-amd64
+          - name: linux-arm64
+            goos: linux
+            goarch: arm64
+            binary_name: lite-ide-linux-arm64
+          - name: darwin-amd64
+            goos: darwin
+            goarch: amd64
+            binary_name: lite-ide-darwin-amd64
+          - name: darwin-arm64
+            goos: darwin
+            goarch: arm64
+            binary_name: lite-ide-darwin-arm64
+          - name: windows-amd64
+            goos: windows
+            goarch: amd64
+            binary_name: lite-ide-windows-amd64.exe
+          - name: windows-arm64
+            goos: windows
+            goarch: arm64
+            binary_name: lite-ide-windows-arm64.exe
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.24'
+
+      - name: Setup Task
+        uses: arduino/setup-task@v2
+
+      - name: Build binary
+        run: |
+          export GOOS=${{ matrix.goos }}
+          export GOARCH=${{ matrix.goarch }}
+          task build
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.binary_name }}
+          path: build/${{ matrix.binary_name }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: lite-ide-linux-amd64
+          path: dist/
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: lite-ide-linux-arm64
+          path: dist/
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: lite-ide-darwin-amd64
+          path: dist/
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: lite-ide-darwin-arm64
+          path: dist/
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: lite-ide-windows-amd64.exe
+          path: dist/
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: lite-ide-windows-arm64.exe
+          path: dist/
+
+      - name: List downloaded files
+        run: ls -la dist/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: dist/*

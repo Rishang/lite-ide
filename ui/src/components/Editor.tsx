@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import MonacoEditor from '@monaco-editor/react'
+import { useEffect, useRef, Suspense } from 'react'
+import { LazyMonacoEditor, LoadingScreen } from './MonacoEditor'
 
 interface EditorProps {
   content: string
@@ -29,50 +29,10 @@ export function Editor({ content, path, language, theme = 'vs-dark', onChange, o
 
   const getLanguage = (path: string) => {
     if (language) return language
-    const ext = path.split('.').pop()?.toLowerCase()
-    switch (ext) {
-      case 'js':
-      case 'jsx':
-        return 'javascript'
-      case 'ts':
-      case 'tsx':
-        return 'typescript'
-      case 'html':
-        return 'html'
-      case 'css':
-        return 'css'
-      case 'json':
-        return 'json'
-      case 'py':
-        return 'python'
-      case 'go':
-        return 'go'
-      case 'rs':
-        return 'rust'
-      case 'java':
-        return 'java'
-      case 'cpp':
-      case 'cc':
-      case 'cxx':
-        return 'cpp'
-      case 'c':
-        return 'c'
-      case 'php':
-        return 'php'
-      case 'rb':
-        return 'ruby'
-      case 'sh':
-        return 'shell'
-      case 'md':
-        return 'markdown'
-      case 'xml':
-        return 'xml'
-      case 'yaml':
-      case 'yml':
-        return 'yaml'
-      default:
-        return 'plaintext'
-    }
+    
+    // Import the shared utility
+    const { getLanguageFromPath } = require('@/lib/common')
+    return getLanguageFromPath(path)
   }
 
   useEffect(() => {
@@ -85,35 +45,100 @@ export function Editor({ content, path, language, theme = 'vs-dark', onChange, o
   }, [language])
 
   return (
-    <div className="flex-1">
-      <MonacoEditor
-        height="100%"
-        defaultLanguage={getLanguage(path)}
-        value={content}
-        onChange={(value) => onChange(value || '')}
-        onMount={(editor) => {
-          editorRef.current = editor
-        }}
-        options={{
-          minimap: { enabled: false },
-          fontSize: 14,
-          fontFamily: 'JetBrains Mono, Consolas, monospace',
-          theme: 'vs-dark',
-          automaticLayout: true,
-          wordWrap: 'on',
-          lineNumbers: 'on',
-          scrollBeyondLastLine: false,
-          smoothScrolling: true,
-          cursorBlinking: 'blink',  // VSCode default
-          cursorSmoothCaretAnimation: 'off',  // Less smooth, like VSCode
-          renderLineHighlight: 'all',
-          bracketPairColorization: { enabled: true },
-          guides: {
-            bracketPairs: true,
-            indentation: true,
-          },
-        }}
-      />
+    <div className="h-full w-full min-h-0 min-w-0 flex-1 bg-[#1e1e1e]">
+      <Suspense fallback={<LoadingScreen />}>
+        <div className="h-full w-full pb-8">
+        <LazyMonacoEditor
+          height="100%"
+          defaultLanguage={getLanguage(path)}
+          value={content}
+          onChange={(value: string) => onChange(value || '')}
+          onMount={(editor: any) => {
+            editorRef.current = editor
+          }}
+          options={{
+            minimap: { enabled: false },
+            fontSize: 14,
+            fontFamily: 'JetBrains Mono, Consolas, "Courier New", monospace',
+            lineNumbers: 'on',
+            roundedSelection: false,
+            scrollBeyondLastLine: true,
+            smoothScrolling: true,
+            cursorBlinking: 'blink',  // VSCode default
+            cursorSmoothCaretAnimation: 'off',  // Less smooth, like VSCode
+            renderLineHighlight: 'all',
+            bracketPairColorization: { enabled: true },
+            autoClosingBrackets: 'always',
+            autoClosingQuotes: 'always',
+            autoClosingDelete: 'always',
+            autoClosingOvertype: 'always',
+            autoSurround: 'quotes',
+            tabSize: 2,
+            insertSpaces: true,
+            detectIndentation: true,
+            wordWrap: 'on',
+            wrappingIndent: 'indent',
+            folding: true,
+            showFoldingControls: 'always',
+            foldingHighlight: true,
+            foldingStrategy: 'auto',
+            links: true,
+            colorDecorators: true,
+            lightbulb: { enabled: true },
+            codeActionsOnSave: {},
+            formatOnPaste: true,
+            formatOnType: true,
+            suggestOnTriggerCharacters: true,
+            acceptSuggestionOnCommitCharacter: true,
+            acceptSuggestionOnEnter: 'on',
+            snippetSuggestions: 'top',
+            emptySelectionClipboard: false,
+            copyWithSyntaxHighlighting: true,
+            scrollbar: {
+              vertical: 'visible',
+              horizontal: 'visible',
+              useShadows: false,
+              verticalScrollbarSize: 10,
+              horizontalScrollbarSize: 10,
+            },
+            overviewRulerLanes: 0,
+            overviewRulerBorder: false,
+            hideCursorInOverviewRuler: true,
+            renderWhitespace: 'selection',
+            guides: {
+              bracketPairs: true,
+              indentation: true,
+            },
+            unicodeHighlight: {
+              ambiguousCharacters: false,
+              invisibleCharacters: false,
+            },
+            accessibilitySupport: 'auto',
+            mouseWheelZoom: true,
+            multiCursorModifier: 'alt',
+            quickSuggestions: {
+              other: true,
+              comments: false,
+              strings: false,
+            },
+            parameterHints: {
+              enabled: true,
+              cycle: false,
+            },
+            autoIndent: 'full',
+            formatOnSave: false,
+            tabCompletion: 'on',
+            wordBasedSuggestions: 'off',
+            suggest: {
+              localityBonus: true,
+              shareSuggestSelections: true,
+              showIcons: true,
+              maxVisibleSuggestions: 12,
+            },
+          }}
+        />
+        </div>
+      </Suspense>
     </div>
   )
 } 
