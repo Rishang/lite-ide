@@ -36,7 +36,7 @@ func Handlers() (api http.Handler, web http.Handler) {
 func apiHandler(w http.ResponseWriter, r *http.Request) {
 	// CORS headers
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
 	if r.Method == "OPTIONS" {
@@ -510,7 +510,7 @@ func handleGet(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 				
-				tree, err := vfs.GetTree(fullPath)
+				tree, err := vfs.GetDirectoryContents(fullPath, rootPath)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -520,7 +520,7 @@ func handleGet(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			// Default: get full tree with lazy loading (limited depth)
+			// Default: get tree with lazy loading (limited depth)
 			tree, err := vfs.GetTree(rootPath)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)

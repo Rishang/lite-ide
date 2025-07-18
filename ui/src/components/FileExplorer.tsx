@@ -1,4 +1,4 @@
-// FileExplorer.tsx - Updated with SSE support
+// FileExplorer.tsx - Updated with SSE support and lazy loading
 'use client'
 
 import React, { useState, useRef, useEffect, useCallback } from 'react'
@@ -134,7 +134,6 @@ export function FileExplorer({
     }
   }, [createState?.isActive, renameState?.isActive])
 
-  // Remove polling interval - SSE handles updates
   // Get file icon based on extension
   const getFileIcon = useCallback((fileName: string) => {
     const ext = fileName.split('.').pop()?.toLowerCase() || ''
@@ -178,6 +177,52 @@ export function FileExplorer({
     return normalizePath(`${parentPath}/${name}`)
   }, [])
 
+  // Load directory contents for lazy loading
+  const loadDirectoryContents = useCallback(async (folderPath: string) => {
+    try {
+      console.log('Loading directory contents for:', folderPath)
+      const response = await fetch(
+        `${config.apiEndpoint}/api/files?root=${encodeURIComponent(currentPath)}&path=${encodeURIComponent(folderPath)}`
+      )
+      
+      if (response.ok) {
+        const children = await response.json() as FileNode[]
+        
+        // Update the tree with loaded children
+        setLocalTree(prevTree => updateTreeWithChildren(prevTree, folderPath, children))
+      } else {
+        console.warn('Failed to load directory contents:', folderPath)
+      }
+    } catch (error) {
+      console.error('Error loading directory contents:', folderPath, error)
+    }
+  }, [currentPath])
+
+  // Update tree with loaded children
+  const updateTreeWithChildren = (tree: FileNode[], folderPath: string, children: FileNode[]): FileNode[] => {
+    return tree.map(node => updateNodeWithChildren(node, folderPath, children))
+  }
+
+  const updateNodeWithChildren = (node: FileNode, folderPath: string, children: FileNode[]): FileNode => {
+    if (node.path === folderPath) {
+      return {
+        ...node,
+        children: children,
+        loaded: true,
+        hasMore: children.length >= 100 // Assume more if we hit the limit
+      }
+    }
+    
+    if (node.children) {
+      return {
+        ...node,
+        children: node.children.map(child => updateNodeWithChildren(child, folderPath, children))
+      }
+    }
+    
+    return node
+  }
+
   // Toggle folder expansion with lazy loading
   const toggleFolder = useCallback(async (path: string) => {
     setExpandedFolders(prev => {
@@ -197,6 +242,11 @@ export function FileExplorer({
   const expandFolder = useCallback(async (folderPath: string) => {
     try {
       console.log('Expanding folder for lazy loading:', folderPath)
+      
+      // Load directory contents using the new lazy loading endpoint
+      await loadDirectoryContents(folderPath)
+      
+      // Also expand for SSE watching
       const response = await fetch(`${config.apiEndpoint}/api/expand?root=${encodeURIComponent(currentPath)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -213,7 +263,7 @@ export function FileExplorer({
     } catch (error) {
       console.error('Error expanding folder:', folderPath, error)
     }
-  }, [currentPath])
+  }, [currentPath, loadDirectoryContents])
 
   // API calls
   const apiCall = async (endpoint: string, method: string, body?: any) => {
@@ -360,7 +410,7 @@ export function FileExplorer({
                     setRenameState(null)
                   }
                 }}
-                className="flex-1 bg-[#2a2a2a] text-white border border-[#444] rounded px-2 py-1 text-sm"
+                className="w-32 bg-[#2a2a2a] text-white border border-[#444] rounded px-2 py-1 text-sm"
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (

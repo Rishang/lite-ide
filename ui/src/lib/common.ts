@@ -173,7 +173,9 @@ export function getThemeForLanguage(language: string): string {
     'ruby': 'vs-dark',
     'xml': 'vs-dark',
     'sql': 'vs-dark',
-    'text': 'vs-dark'
+    'text': 'vs-dark',
+    'terraform': 'vs-dark',
+    'dockerfile': 'vs-dark',
   }
   return themes[language] || 'vs-dark'
 }
