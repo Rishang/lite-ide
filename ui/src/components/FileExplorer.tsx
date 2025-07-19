@@ -423,9 +423,9 @@ export function FileExplorer({
             {node.type === 'folder' ? (
               <>
                 {isExpanded ? (
-                  <ChevronDown className="w-4 h-4 mr-1 text-muted-foreground flex-shrink-0" />
-                ) : (
-                  <ChevronRight className="w-4 h-4 mr-1 text-muted-foreground flex-shrink-0" />
+                    <ChevronDown className="w-4 h-4 mr-1 text-muted-foreground flex-shrink-0" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 mr-1 text-muted-foreground flex-shrink-0" />
                 )}
                 <Folder className="w-4 h-4 mr-2 text-blue-500 flex-shrink-0" />
               </>

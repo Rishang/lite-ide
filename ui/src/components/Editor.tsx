@@ -57,7 +57,14 @@ export function Editor({ content, path, language, theme = 'vs-dark', onChange, o
             editorRef.current = editor
           }}
           options={{
-            minimap: { enabled: false },
+            minimap: {
+              enabled: true,
+              side: 'right',
+              size: 'proportional',
+              showSlider: 'mouseover',
+              renderCharacters: true,
+              maxColumn: 120
+            },
             fontSize: 14,
             fontFamily: 'JetBrains Mono, Consolas, "Courier New", monospace',
             lineNumbers: 'on',
@@ -134,6 +141,26 @@ export function Editor({ content, path, language, theme = 'vs-dark', onChange, o
               shareSuggestSelections: true,
               showIcons: true,
               maxVisibleSuggestions: 12,
+              showKeywords: true,
+              showSnippets: true,
+              showClasses: true,
+              showFunctions: true,
+              showVariables: true,
+              showModules: true,
+              showProperties: true,
+              showEvents: true,
+              showOperators: true,
+              showUnits: true,
+              showValues: true,
+              showConstants: true,
+              showEnums: true,
+              showEnumMembers: true,
+              showColors: true,
+              showFiles: true,
+              showReferences: true,
+              showFolders: true,
+              showTypeParameters: true,
+              showWords: true,
             },
           }}
         />
