@@ -267,6 +267,14 @@ export function HomeContent() {
     setIsTerminalMaximized(!isTerminalMaximized)
   }
 
+  const handlePathChange = (newPath: string) => {
+    setCurrentPath(newPath)
+    // Update URL with new path
+    const url = new URL(window.location.href)
+    url.searchParams.set('p', newPath)
+    window.history.replaceState({}, '', url.toString())
+  }
+
   const getLanguageFromPath = (path: string) => {
     const { getLanguageFromPath: getLang } = require('@/lib/common')
     return getLang(path)
@@ -290,6 +298,7 @@ export function HomeContent() {
               onSaveFile={saveSpecificFile}
               className="h-full"
               currentPath={currentPath}
+              onPathChange={handlePathChange}
               onRefresh={refreshTree}
               onMinimize={() => {
                 setIsExplorerMinimized(prev => {

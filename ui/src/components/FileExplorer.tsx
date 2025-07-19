@@ -31,6 +31,7 @@ interface FileExplorerProps {
   onSaveFile?: (path: string) => Promise<void>
   className?: string
   currentPath: string
+  onPathChange?: (newPath: string) => void
   onRefresh?: () => void
   onMinimize?: () => void
   isMinimized?: boolean
@@ -58,6 +59,7 @@ export function FileExplorer({
   onSaveFile, 
   className, 
   currentPath, 
+  onPathChange,
   onRefresh,
   onMinimize,
   isMinimized = false,
@@ -70,15 +72,23 @@ export function FileExplorer({
   const [deleteNode, setDeleteNode] = useState<FileNode | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [localTree, setLocalTree] = useState<FileNode[]>(tree)
+  const [pathInput, setPathInput] = useState<string>(currentPath)
+  const [isPathEditing, setIsPathEditing] = useState<boolean>(false)
   
   const explorerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const pathInputRef = useRef<HTMLInputElement>(null)
   const eventSourceRef = useRef<EventSource | null>(null)
 
   // Sync local tree with props
   useEffect(() => {
     setLocalTree(tree)
   }, [tree])
+
+  // Sync path input with currentPath
+  useEffect(() => {
+    setPathInput(currentPath)
+  }, [currentPath])
 
   // SSE connection for real-time updates
   useEffect(() => {
@@ -186,10 +196,10 @@ export function FileExplorer({
       )
       
       if (response.ok) {
-        const children = await response.json() as FileNode[]
+        const children = await response.json() as FileNode[] | null
         
-        // Update the tree with loaded children
-        setLocalTree(prevTree => updateTreeWithChildren(prevTree, folderPath, children))
+        // Update the tree with loaded children (handle null for empty folders)
+        setLocalTree(prevTree => updateTreeWithChildren(prevTree, folderPath, children || []))
       } else {
         console.warn('Failed to load directory contents:', folderPath)
       }
@@ -207,9 +217,9 @@ export function FileExplorer({
     if (node.path === folderPath) {
       return {
         ...node,
-        children: children,
+        children: children || [], // Handle null children by defaulting to empty array
         loaded: true,
-        hasMore: children.length >= 100 // Assume more if we hit the limit
+        hasMore: children && children.length >= 100 // Assume more if we hit the limit
       }
     }
     
@@ -231,12 +241,27 @@ export function FileExplorer({
         newSet.delete(path)
       } else {
         newSet.add(path)
-        // Trigger folder expansion for lazy loading
-        expandFolder(path)
+        // Find the node to check if it has children or needs loading
+        const findNode = (nodes: FileNode[]): FileNode | null => {
+          for (const node of nodes) {
+            if (node.path === path) return node
+            if (node.children) {
+              const found = findNode(node.children)
+              if (found) return found
+            }
+          }
+          return null
+        }
+        
+        const node = findNode(localTree)
+        // Only trigger folder expansion if it has children or hasn't been loaded
+        if (node && (node.children && node.children.length > 0 || !node.loaded)) {
+          expandFolder(path)
+        }
       }
       return newSet
     })
-  }, [currentPath])
+  }, [currentPath, localTree])
 
   // Expand folder for lazy loading
   const expandFolder = useCallback(async (folderPath: string) => {
@@ -338,6 +363,22 @@ export function FileExplorer({
     setContextMenu({ x: e.clientX, y: e.clientY, node })
   }, [])
 
+  const handlePathChange = () => {
+    if (onPathChange && pathInput.trim() !== currentPath) {
+      onPathChange(pathInput.trim())
+    }
+    setIsPathEditing(false)
+  }
+
+  const handlePathKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handlePathChange()
+    } else if (e.key === 'Escape') {
+      setPathInput(currentPath)
+      setIsPathEditing(false)
+    }
+  }
+
   const handleCreate = useCallback((type: 'file' | 'folder', parentPath: string | null) => {
     console.log('handleCreate called with:', { type, parentPath });
     setCreateState({ type, parentPath, name: '', isActive: true })
@@ -381,14 +422,10 @@ export function FileExplorer({
           >
             {node.type === 'folder' ? (
               <>
-                {hasChildren ? (
-                  isExpanded ? (
-                    <ChevronDown className="w-4 h-4 mr-1 text-muted-foreground flex-shrink-0" />
-                  ) : (
-                    <ChevronRight className="w-4 h-4 mr-1 text-muted-foreground flex-shrink-0" />
-                  )
+                {isExpanded ? (
+                  <ChevronDown className="w-4 h-4 mr-1 text-muted-foreground flex-shrink-0" />
                 ) : (
-                  <div className="w-4 h-4 mr-1 flex-shrink-0" />
+                  <ChevronRight className="w-4 h-4 mr-1 text-muted-foreground flex-shrink-0" />
                 )}
                 <Folder className="w-4 h-4 mr-2 text-blue-500 flex-shrink-0" />
               </>
@@ -458,7 +495,13 @@ export function FileExplorer({
           {/* Render children */}
           {node.type === 'folder' && isExpanded && node.children && (
             <div className="mt-1">
-              {renderTree(node.children, depth + 1)}
+              {node.children.length > 0 ? (
+                renderTree(node.children, depth + 1)
+              ) : (
+                <div className="text-gray-500 text-xs italic px-4 py-2">
+                  Empty folder
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -479,7 +522,34 @@ export function FileExplorer({
     <div ref={explorerRef} className={cn('bg-[#181818] border-r border-[#333] flex flex-col h-full', className)}>
       {/* Header */}
       <div className="p-3 border-b border-[#333] bg-[#181818] flex items-center justify-between flex-shrink-0">
-        {!isMinimized && <h2 className="text-sm font-semibold text-white uppercase tracking-wider">IDE</h2>}
+        {!isMinimized && (
+          <div className="flex-1 mr-2">
+            {isPathEditing ? (
+              <input
+                ref={pathInputRef}
+                type="text"
+                value={pathInput}
+                onChange={(e) => setPathInput(e.target.value)}
+                onBlur={handlePathChange}
+                onKeyDown={handlePathKeyDown}
+                className="w-full bg-[#2a2a2a] text-white border border-[#444] rounded px-2 py-1 text-sm"
+                placeholder="Enter path..."
+                autoFocus
+              />
+            ) : (
+              <div 
+                className="text-sm text-white cursor-pointer hover:bg-[#2a2a2a] rounded px-2 py-1 transition-colors"
+                onClick={() => {
+                  setIsPathEditing(true)
+                  setTimeout(() => pathInputRef.current?.focus(), 0)
+                }}
+                title="Click to edit path"
+              >
+                {currentPath}
+              </div>
+            )}
+          </div>
+        )}
         <div className="flex gap-1">
           {!isMinimized && (
             <>
