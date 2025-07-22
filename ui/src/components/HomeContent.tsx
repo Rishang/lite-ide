@@ -177,7 +177,8 @@ export function HomeContent() {
 
   const openFile = async (path: string) => {
     try {
-      const response = await fetch(`${config.apiEndpoint}/api/files${path}?root=${encodeURIComponent(currentPath)}`)
+      const normalizedPath = path.startsWith('/') ? path : '/' + path
+      const response = await fetch(`${config.apiEndpoint}/api/files${normalizedPath}?root=${encodeURIComponent(currentPath)}`)
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
@@ -193,7 +194,8 @@ export function HomeContent() {
 
   const saveFile = async (path: string, content: string) => {
     try {
-      const response = await fetch(`${config.apiEndpoint}/api/files${path}?root=${encodeURIComponent(currentPath)}`, {
+      const normalizedPath = path.startsWith('/') ? path : '/' + path
+      const response = await fetch(`${config.apiEndpoint}/api/files${normalizedPath}?root=${encodeURIComponent(currentPath)}`, {
         method: 'PUT',
         body: content
       })

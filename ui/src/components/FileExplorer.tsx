@@ -292,7 +292,8 @@ export function FileExplorer({
 
   // API calls
   const apiCall = async (endpoint: string, method: string, body?: any) => {
-    const url = `${config.apiEndpoint}/api/files${endpoint}?root=${encodeURIComponent(currentPath)}`
+    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : '/' + endpoint
+    const url = `${config.apiEndpoint}/api/files${normalizedEndpoint}?root=${encodeURIComponent(currentPath)}`
     const response = await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
