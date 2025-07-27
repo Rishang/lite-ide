@@ -20,34 +20,34 @@ type FileNode struct {
 
 // TreeOptions configures how the tree is built
 type TreeOptions struct {
-	MaxDepth     int    `json:"maxDepth"`     // Maximum depth to traverse
-	MaxFiles     int    `json:"maxFiles"`     // Maximum files per directory
+	MaxDepth     int      `json:"maxDepth"`     // Maximum depth to traverse
+	MaxFiles     int      `json:"maxFiles"`     // Maximum files per directory
 	SkipPatterns []string `json:"skipPatterns"` // Patterns to skip
-	RootPath     string `json:"rootPath"`     // Root path for the tree
+	RootPath     string   `json:"rootPath"`     // Root path for the tree
 }
 
 var (
 	mu = &sync.RWMutex{}
-	
+
 	// Default skip directories
 	skipDirs = map[string]bool{
-		"node_modules": true,
-		".git":         true,
-		".next":        true,
-		".pnpm":        true,
-		".vscode":      true,
-		".idea":        true,
-		"__pycache__":  true,
-		".nuxt":        true,
-		".venv":        true,
-		"venv":         true,
-		".pipenv":      true,
+		"node_modules":  true,
+		".git":          true,
+		".next":         true,
+		".pnpm":         true,
+		".vscode":       true,
+		".idea":         true,
+		"__pycache__":   true,
+		".nuxt":         true,
+		".venv":         true,
+		"venv":          true,
+		".pipenv":       true,
 		".pytest_cache": true,
-		".ruff_cache":  true,
-		".mypy_cache":  true,
-		"target":       true,
-		"build":        true,
-		"dist":         true,
+		".ruff_cache":   true,
+		".mypy_cache":   true,
+		"target":        true,
+		"build":         true,
+		"dist":          true,
 	}
 )
 
@@ -59,7 +59,7 @@ func GetTreeLazy(rootPath string, options TreeOptions) ([]*FileNode, error) {
 
 	// Normalize root path
 	rootPath = filepath.Clean(rootPath)
-	
+
 	// Use default options if none provided
 	if options.MaxDepth == 0 {
 		options.MaxDepth = 2 // Default: only load immediate children
@@ -77,7 +77,7 @@ func GetTreeLazy(rootPath string, options TreeOptions) ([]*FileNode, error) {
 // getDirectoryContents gets contents of a directory with lazy loading
 func getDirectoryContents(dirPath, relPath string, options TreeOptions, currentDepth int) ([]*FileNode, error) {
 	fullPath := filepath.Join(options.RootPath, relPath)
-	
+
 	// Read directory contents
 	entries, err := os.ReadDir(fullPath)
 	if err != nil {
@@ -87,7 +87,7 @@ func getDirectoryContents(dirPath, relPath string, options TreeOptions, currentD
 	// Separate folders and files for sorting
 	var folders []os.DirEntry
 	var files []os.DirEntry
-	
+
 	for _, entry := range entries {
 		if entry.IsDir() {
 			folders = append(folders, entry)
@@ -95,7 +95,7 @@ func getDirectoryContents(dirPath, relPath string, options TreeOptions, currentD
 			files = append(files, entry)
 		}
 	}
-	
+
 	// Sort folders and files alphabetically
 	sort.Slice(folders, func(i, j int) bool {
 		return folders[i].Name() < folders[j].Name()
@@ -103,44 +103,44 @@ func getDirectoryContents(dirPath, relPath string, options TreeOptions, currentD
 	sort.Slice(files, func(i, j int) bool {
 		return files[i].Name() < files[j].Name()
 	})
-	
+
 	// Combine: folders first, then files
 	var sortedEntries []os.DirEntry
 	sortedEntries = append(sortedEntries, folders...)
 	sortedEntries = append(sortedEntries, files...)
 
-	var nodes []*FileNode
+	var nodes []*FileNode = make([]*FileNode, 0) // Initialize as empty slice instead of nil
 	fileCount := 0
-	
+
 	for _, entry := range sortedEntries {
 		// Skip hidden files and directories
 		// if strings.HasPrefix(entry.Name(), ".") && entry.Name() != "." && entry.Name() != ".." {
 		// 	continue
 		// }
-		
+
 		// Skip filtered directories
 		if entry.IsDir() && skipDirs[entry.Name()] {
 			continue
 		}
-		
+
 		// Build relative path
 		entryRelPath := filepath.Join(relPath, entry.Name())
 		if relPath == "" {
 			entryRelPath = entry.Name()
 		}
-		
+
 		// Build normalized path
 		normalizedPath := "/" + filepath.ToSlash(entryRelPath)
-		
+
 		node := &FileNode{
-			Name:    entry.Name(),
-			Path:    normalizedPath,
-			Loaded:  false, // Children not loaded yet
+			Name:   entry.Name(),
+			Path:   normalizedPath,
+			Loaded: false, // Children not loaded yet
 		}
-		
+
 		if entry.IsDir() {
 			node.Type = "folder"
-			
+
 			// Check if directory has children (but don't load them yet)
 			subPath := filepath.Join(fullPath, entry.Name())
 			subEntries, err := os.ReadDir(subPath)
@@ -152,7 +152,7 @@ func getDirectoryContents(dirPath, relPath string, options TreeOptions, currentD
 						visibleChildren++
 					}
 				}
-				
+
 				node.HasMore = visibleChildren > 0
 				if visibleChildren > options.MaxFiles {
 					node.HasMore = true
@@ -162,30 +162,30 @@ func getDirectoryContents(dirPath, relPath string, options TreeOptions, currentD
 			node.Type = "file"
 			fileCount++
 		}
-		
+
 		// Respect max files limit
 		if fileCount >= options.MaxFiles && !entry.IsDir() {
 			// Add a "more files" indicator
 			nodes = append(nodes, &FileNode{
-				Name:    "...",
-				Type:    "file",
-				Path:    normalizedPath + "/more",
-				Loaded:  true,
+				Name:   "...",
+				Type:   "file",
+				Path:   normalizedPath + "/more",
+				Loaded: true,
 			})
 			break
 		}
-		
+
 		nodes = append(nodes, node)
-		
+
 		// Load children if within depth limit and directory is small
 		if entry.IsDir() && currentDepth < options.MaxDepth {
 			// For immediate children, load a limited set
 			childOptions := TreeOptions{
-				MaxDepth: 1, // Only load one level deeper
+				MaxDepth: 1,  // Only load one level deeper
 				MaxFiles: 10, // Limit to 10 items for preview
 				RootPath: options.RootPath,
 			}
-			
+
 			children, err := getDirectoryContents(
 				filepath.Join(dirPath, entry.Name()),
 				entryRelPath,
@@ -198,7 +198,7 @@ func getDirectoryContents(dirPath, relPath string, options TreeOptions, currentD
 			}
 		}
 	}
-	
+
 	return nodes, nil
 }
 
@@ -209,12 +209,12 @@ func GetDirectoryContents(dirPath string, rootPath string) ([]*FileNode, error) 
 		MaxFiles: 100,
 		RootPath: rootPath,
 	}
-	
+
 	relPath, err := filepath.Rel(rootPath, dirPath)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return getDirectoryContents(dirPath, relPath, options, 0)
 }
 
@@ -225,7 +225,7 @@ func GetTree(rootPath string) ([]*FileNode, error) {
 		MaxFiles: 50,
 		RootPath: rootPath,
 	}
-	
+
 	return GetTreeLazy(rootPath, options)
 }
 
@@ -300,6 +300,7 @@ func CreateDirectory(dirPath, rootPath string) error {
 		return err
 	}
 	fullPath := filepath.Join(rootPath, p)
+
 	return os.MkdirAll(fullPath, 0755)
 }
 
