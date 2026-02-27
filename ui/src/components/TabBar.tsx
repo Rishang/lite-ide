@@ -2,6 +2,7 @@
 
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getFileIcon } from '@/components/FileExplorer'
 
 interface TabBarProps {
   tabs: string[]
@@ -16,52 +17,71 @@ export function TabBar({ tabs, activeTab, dirtyTabs, onTabSelect, onTabClose }: 
     return path.split('/').pop() || path
   }
 
+  if (tabs.length === 0) return null
+
   return (
-    <div className="flex bg-[#181818] border-b border-[#333]">
+    <div className="flex bg-[#252526] overflow-x-auto scrollbar-thin">
       {tabs.map((tab) => {
         const isActive = tab === activeTab
         const isDirty = dirtyTabs.includes(tab)
-        
+
         return (
           <div
             key={tab}
             className={cn(
-              'flex items-center px-4 py-2 border-r border-[#333] cursor-pointer text-sm transition-all duration-200 min-w-0 relative',
-              isActive 
-                ? 'bg-[#1e1e1e] text-white' 
-                : 'bg-[#181818] text-gray-300 hover:bg-[#2a2a2a] hover:text-white'
+              'flex items-center px-3 py-[6px] cursor-pointer text-[13px] min-w-0 relative border-r border-[#252526] select-none group',
+              isActive
+                ? 'bg-[#1e1e1e] text-white'
+                : 'bg-[#2d2d2d] text-[#969696] hover:bg-[#2d2d2d]/80'
             )}
             onClick={() => onTabSelect(tab)}
           >
-            {/* Active tab indicator - bottom border only */}
+            {/* Active tab top border */}
             {isActive && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-[#007acc]" />
             )}
-            
+
+            {/* File icon */}
+            <div className="flex-shrink-0 mr-2">
+              {getFileIcon(getFileName(tab))}
+            </div>
+
             <span className={cn(
-              "truncate max-w-32 font-medium flex-1",
-              isActive && "text-blue-50"
+              "truncate max-w-40",
+              isActive && "text-white"
             )}>
               {getFileName(tab)}
-              {isDirty && <span className="text-blue-400 ml-1 font-bold">•</span>}
             </span>
-            <button
-              className={cn(
-                "ml-2 p-1 rounded transition-colors duration-200 flex-shrink-0",
-                isActive 
-                  ? "hover:bg-red-600/30 hover:text-red-300" 
-                  : "hover:bg-red-600/20 hover:text-red-400"
+
+            {/* Dirty indicator or close button */}
+            <div className="ml-2 w-5 h-5 flex items-center justify-center flex-shrink-0">
+              {isDirty && !isActive ? (
+                <span className="w-2 h-2 rounded-full bg-white/60 block" />
+              ) : (
+                <button
+                  className={cn(
+                    "p-0.5 rounded transition-colors",
+                    isDirty
+                      ? "text-white/60"
+                      : "opacity-0 group-hover:opacity-100",
+                    "hover:bg-[#505050]"
+                  )}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onTabClose(tab)
+                  }}
+                >
+                  {isDirty ? (
+                    <span className="w-2 h-2 rounded-full bg-white/80 block" />
+                  ) : (
+                    <X className="w-4 h-4" />
+                  )}
+                </button>
               )}
-              onClick={(e) => {
-                e.stopPropagation()
-                onTabClose(tab)
-              }}
-            >
-              <X className="w-3 h-3" />
-            </button>
+            </div>
           </div>
         )
       })}
     </div>
   )
-} 
+}

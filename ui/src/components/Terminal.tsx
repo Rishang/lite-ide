@@ -27,7 +27,7 @@ export function Terminal() {
         foreground: '#ffffff',
       },
       fontSize: 14,
-      fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
+      fontFamily: 'JetBrains Mono, Menlo, Monaco, "Ubuntu Mono", monospace',
       rows: 24,
       cols: 80,
     })
@@ -38,7 +38,7 @@ export function Terminal() {
     term.loadAddon(fit)
     term.loadAddon(new WebLinksAddon())
     term.open(termRef.current)
-    
+
     // Delay fit to ensure container is properly sized
     setTimeout(() => {
       if (termRef.current && termRef.current.offsetParent !== null) {
@@ -56,17 +56,17 @@ export function Terminal() {
         if (resizeTimeoutRef.current) {
           clearTimeout(resizeTimeoutRef.current)
         }
-        
+
         resizeTimeoutRef.current = setTimeout(() => {
           if (termRef.current && termRef.current.offsetParent !== null && fitAddon.current) {
             try {
               // Terminal is visible, safe to resize
               fitAddon.current.fit()
               if (socketRef.current?.readyState === WebSocket.OPEN) {
-                socketRef.current.send(JSON.stringify({ 
-                  type: 'resize', 
-                  cols: term.cols, 
-                  rows: term.rows 
+                socketRef.current.send(JSON.stringify({
+                  type: 'resize',
+                  cols: term.cols,
+                  rows: term.rows
                 }))
               }
             } catch (error) {
@@ -83,16 +83,16 @@ export function Terminal() {
       if (resizeTimeoutRef.current) {
         clearTimeout(resizeTimeoutRef.current)
       }
-      
+
       resizeTimeoutRef.current = setTimeout(() => {
         if (termRef.current && termRef.current.offsetParent !== null && fitAddon.current) {
           try {
             fitAddon.current.fit()
             if (socketRef.current?.readyState === WebSocket.OPEN) {
-              socketRef.current.send(JSON.stringify({ 
-                type: 'resize', 
-                cols: term.cols, 
-                rows: term.rows 
+              socketRef.current.send(JSON.stringify({
+                type: 'resize',
+                cols: term.cols,
+                rows: term.rows
               }))
             }
           } catch (error) {

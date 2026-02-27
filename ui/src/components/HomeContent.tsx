@@ -1,7 +1,10 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { ChevronRight } from 'lucide-react'
+import {
+  Files, Terminal as TerminalIcon, Search, GitBranch, Settings,
+  ChevronRight, PanelBottomClose, PanelBottom
+} from 'lucide-react'
 import { FileExplorer } from '@/components/FileExplorer'
 import { Editor } from '@/components/Editor'
 import { TabBar } from '@/components/TabBar'
@@ -10,6 +13,7 @@ import { FileNode } from '@/types/file'
 import { useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { config } from '@/utils/config'
+import { getLanguageFromPath, getThemeForLanguage } from '@/lib/common'
 
 // Dynamically import TerminalPanel with SSR disabled
 const TerminalPanel = dynamic(() => import('@/components/TerminalPanel').then(mod => ({ default: mod.TerminalPanel })), {
@@ -25,16 +29,16 @@ export function HomeContent() {
   const [isTerminalOpen, setIsTerminalOpen] = useState<boolean>(config.showEditor ? true : config.showTerminal)
   const [isTerminalMinimized, setIsTerminalMinimized] = useState<boolean>(config.showEditor ? false : !config.showTerminal)
   const [isTerminalMaximized, setIsTerminalMaximized] = useState(false)
-  const [explorerWidth, setExplorerWidth] = useState(256) // 256px = w-64
+  const [explorerWidth, setExplorerWidth] = useState(256)
   const [isResizing, setIsResizing] = useState(false)
   const [isExplorerMinimized, setIsExplorerMinimized] = useState(!config.showEditor)
   const [lastExplorerWidth, setLastExplorerWidth] = useState(256)
   const [windowHeight, setWindowHeight] = useState(600)
+  const [activePanel, setActivePanel] = useState<string>('files')
   const searchParams = useSearchParams()
 
   useEffect(() => {
     const pathParam = searchParams.get('p')
-    // Set currentPath to the URL parameter value, or '.' if not present
     setCurrentPath(pathParam || '.')
     refreshTree()
   }, [searchParams])
@@ -44,10 +48,10 @@ export function HomeContent() {
     const updateWindowHeight = () => {
       setWindowHeight(window.innerHeight)
     }
-    
+
     updateWindowHeight()
     window.addEventListener('resize', updateWindowHeight)
-    
+
     return () => {
       window.removeEventListener('resize', updateWindowHeight)
     }
@@ -55,20 +59,17 @@ export function HomeContent() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+` toggle terminal
       if (e.ctrlKey && e.key === '`') {
         e.preventDefault()
         if (!config.showEditor) {
-          // When no editor, toggle terminal visibility completely
           setIsTerminalOpen(prev => !prev)
           setIsTerminalMinimized(false)
         } else {
-          // When editor is present, just minimize/maximize terminal
           setIsTerminalMinimized(prev => {
             const newMinimized = !prev
-            // If we're unminimizing, focus the terminal
             if (!newMinimized) {
               setTimeout(() => {
-                // Dispatch custom event to focus terminal
                 window.dispatchEvent(new Event('focusTerminal'))
               }, 100)
             }
@@ -76,12 +77,33 @@ export function HomeContent() {
           })
         }
       }
+      // Ctrl+W close active tab
+      if ((e.ctrlKey || e.metaKey) && e.key === 'w') {
+        e.preventDefault()
+        if (activeTab) {
+          closeTab(activeTab)
+        }
+      }
+      // Ctrl+B toggle sidebar
+      if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+        e.preventDefault()
+        setIsExplorerMinimized(prev => {
+          const newMinimized = !prev
+          if (newMinimized) {
+            setLastExplorerWidth(explorerWidth)
+            setExplorerWidth(0)
+          } else {
+            setExplorerWidth(lastExplorerWidth)
+          }
+          return newMinimized
+        })
+      }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [])
+  }, [activeTab, explorerWidth, lastExplorerWidth])
 
   // SSE connection for real-time file tree updates
   useEffect(() => {
@@ -93,7 +115,7 @@ export function HomeContent() {
       }
 
       eventSource = new EventSource(`${config.apiEndpoint}/api/watch?root=${encodeURIComponent(currentPath)}`)
-      
+
       eventSource.onmessage = (event) => {
         try {
           const newTree = JSON.parse(event.data) as FileNode[]
@@ -105,7 +127,6 @@ export function HomeContent() {
 
       eventSource.onerror = (error) => {
         console.error('SSE error:', error)
-        // Attempt to reconnect after 3 seconds
         setTimeout(() => {
           if (eventSource?.readyState === EventSource.CLOSED) {
             connectSSE()
@@ -133,7 +154,8 @@ export function HomeContent() {
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (isResizing) {
-        const newWidth = Math.max(200, Math.min(600, e.clientX))
+        // Account for activity bar width (48px)
+        const newWidth = Math.max(200, Math.min(600, e.clientX - 48))
         setExplorerWidth(newWidth)
       }
     }
@@ -218,7 +240,8 @@ export function HomeContent() {
     newTabs.delete(path)
     setTabs(newTabs)
     if (activeTab === path) {
-      setActiveTab(newTabs.size > 0 ? Array.from(newTabs.keys())[0] : null)
+      const remaining = Array.from(newTabs.keys())
+      setActiveTab(remaining.length > 0 ? remaining[remaining.length - 1] : null)
     }
   }
 
@@ -232,31 +255,26 @@ export function HomeContent() {
     }
   }
 
-  // Handle file renaming - update tabs when a file is renamed
   const handleFileRename = (oldPath: string, newPath: string) => {
     const newTabs = new Map(tabs)
     const tabData = newTabs.get(oldPath)
 
     if (tabData) {
-      // Remove the old path and add the new path
       newTabs.delete(oldPath)
       newTabs.set(newPath, tabData)
       setTabs(newTabs)
 
-      // Update active tab if it was the renamed file
       if (activeTab === oldPath) {
         setActiveTab(newPath)
       }
     }
   }
 
-  // Check if a file is dirty (has unsaved changes)
   const checkFileDirty = (path: string): boolean => {
     const tab = tabs.get(path)
     return tab ? tab.dirty : false
   }
 
-  // Save a specific file
   const saveSpecificFile = async (path: string): Promise<void> => {
     const tab = tabs.get(path)
     if (tab) {
@@ -264,34 +282,61 @@ export function HomeContent() {
     }
   }
 
-  // Handle terminal maximize
   const handleTerminalMaximize = () => {
     setIsTerminalMaximized(!isTerminalMaximized)
   }
 
   const handlePathChange = (newPath: string) => {
     setCurrentPath(newPath)
-    // Update URL with new path
     const url = new URL(window.location.href)
     url.searchParams.set('p', newPath)
     window.history.replaceState({}, '', url.toString())
   }
 
-  const getLanguageFromPath = (path: string) => {
-    const { getLanguageFromPath: getLang } = require('@/lib/common')
-    return getLang(path)
+  // Build breadcrumbs from active file path
+  const getBreadcrumbs = () => {
+    if (!activeTab) return []
+    const parts = activeTab.replace(/^\//, '').split('/')
+    return parts
   }
 
-  const getThemeForLanguage = (language: string) => {
-    const { getThemeForLanguage: getTheme } = require('@/lib/common')
-    return getTheme(language)
-  }
+  const getFileName = (path: string) => path.split('/').pop() || path
 
   return (
     <div className="flex h-screen bg-[#1e1e1e] text-white overflow-hidden">
+      {/* VS Code Activity Bar */}
       {config.showEditor && (
+        <div className="w-12 bg-[#333333] flex flex-col items-center py-1 flex-shrink-0 border-r border-[#252526]">
+          <button
+            className={`w-12 h-12 flex items-center justify-center transition-colors relative ${activePanel === 'files' ? 'text-white' : 'text-[#858585] hover:text-white'
+              }`}
+            onClick={() => {
+              if (activePanel === 'files' && !isExplorerMinimized) {
+                setIsExplorerMinimized(true)
+                setLastExplorerWidth(explorerWidth)
+                setExplorerWidth(0)
+              } else {
+                setActivePanel('files')
+                if (isExplorerMinimized) {
+                  setIsExplorerMinimized(false)
+                  setExplorerWidth(lastExplorerWidth)
+                }
+              }
+            }}
+            title="Explorer (Ctrl+B)"
+          >
+            {activePanel === 'files' && !isExplorerMinimized && (
+              <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-white" />
+            )}
+            <Files className="w-6 h-6" />
+          </button>
+        </div>
+      )}
+
+      {/* File Explorer Sidebar */}
+      {config.showEditor && !isExplorerMinimized && (
         <>
-          <div style={{ width: isExplorerMinimized ? '48px' : `${explorerWidth}px` }} className={`flex-shrink-0 transition-all duration-75 ${isExplorerMinimized ? 'overflow-hidden' : ''}`}>
+          <div style={{ width: `${explorerWidth}px` }} className="flex-shrink-0 transition-none">
             <FileExplorer
               tree={tree}
               onFileOpen={openFile}
@@ -302,32 +347,20 @@ export function HomeContent() {
               currentPath={currentPath}
               onPathChange={handlePathChange}
               onRefresh={refreshTree}
-              onMinimize={() => {
-                setIsExplorerMinimized(prev => {
-                  const newMinimized = !prev
-                  if (newMinimized) {
-                    setLastExplorerWidth(explorerWidth)
-                    setExplorerWidth(0)
-                  } else {
-                    setExplorerWidth(lastExplorerWidth)
-                  }
-                  return newMinimized
-                })
-              }}
-              isMinimized={isExplorerMinimized}
-              showMinimizeButton={config.showEditor}
+              showMinimizeButton={false}
+              activeFilePath={activeTab}
             />
           </div>
 
           {/* Resizable border */}
           <div
-            className="w-1 bg-[#333] hover:bg-[#555] cursor-col-resize flex-shrink-0"
+            className="w-[3px] bg-transparent hover:bg-[#007acc] cursor-col-resize flex-shrink-0 transition-colors"
             onMouseDown={handleResizeStart}
-            style={{ cursor: isResizing ? 'col-resize' : 'col-resize' }}
           />
         </>
       )}
 
+      {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
         {/* Editor Area */}
         {config.showEditor && !isTerminalMaximized && (
@@ -339,15 +372,40 @@ export function HomeContent() {
               onTabSelect={setActiveTab}
               onTabClose={closeTab}
             />
+
+            {/* Breadcrumbs */}
+            {activeTab && (
+              <div className="flex items-center px-4 py-1 bg-[#1e1e1e] border-b border-[#252526] text-xs">
+                {getBreadcrumbs().map((part, index, arr) => (
+                  <span key={index} className="flex items-center">
+                    <span className="text-[#cccccc] hover:text-white cursor-pointer hover:underline">
+                      {part}
+                    </span>
+                    {index < arr.length - 1 && (
+                      <ChevronRight className="w-3 h-3 mx-1 text-[#666] flex-shrink-0" />
+                    )}
+                  </span>
+                ))}
+              </div>
+            )}
+
             <div className="flex-1 min-h-0 min-w-0 bg-[#1e1e1e] overflow-hidden">
-              <Editor
-                content={activeTab ? tabs.get(activeTab)?.content || '' : ''}
-                path={activeTab || ''}
-                language={activeTab ? getLanguageFromPath(activeTab) : 'text'}
-                theme={activeTab ? getThemeForLanguage(getLanguageFromPath(activeTab)) : 'vs-dark'}
-                onChange={(content: string) => activeTab && updateTabContent(activeTab, content)}
-                onSave={() => activeTab && saveFile(activeTab, tabs.get(activeTab)?.content || '')}
-              />
+              {activeTab ? (
+                <Editor
+                  content={tabs.get(activeTab)?.content || ''}
+                  path={activeTab}
+                  language={getLanguageFromPath(activeTab)}
+                  theme={getThemeForLanguage(getLanguageFromPath(activeTab))}
+                  onChange={(content: string) => updateTabContent(activeTab, content)}
+                  onSave={() => saveFile(activeTab, tabs.get(activeTab)?.content || '')}
+                />
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-[#5a5a5a]">
+                  <div className="text-6xl font-light mb-4 opacity-20">⌨</div>
+                  <div className="text-lg font-light">Lite IDE</div>
+                  <div className="text-sm mt-2 opacity-60">Open a file from the explorer to start editing</div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -364,7 +422,37 @@ export function HomeContent() {
             <TerminalPanel onMaximize={handleTerminalMaximize} />
           </ResizablePanel>
         )}
+
+        {/* Status Bar */}
+        {config.showEditor && (
+          <div className="h-[22px] bg-[#007acc] flex items-center justify-between px-3 text-xs text-white flex-shrink-0 select-none">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1">
+                <GitBranch className="w-3 h-3" />
+                main
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              {activeTab && (
+                <>
+                  <span>{getLanguageFromPath(activeTab).charAt(0).toUpperCase() + getLanguageFromPath(activeTab).slice(1)}</span>
+                  <span>UTF-8</span>
+                  <span>LF</span>
+                </>
+              )}
+              <button
+                className="flex items-center gap-1 hover:bg-white/20 px-1 rounded transition-colors"
+                onClick={() => {
+                  setIsTerminalMinimized(prev => !prev)
+                }}
+                title="Toggle Terminal (Ctrl+`)"
+              >
+                {isTerminalMinimized ? <PanelBottom className="w-3 h-3" /> : <PanelBottomClose className="w-3 h-3" />}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
-} 
+}

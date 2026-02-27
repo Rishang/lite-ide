@@ -145,12 +145,13 @@ func getDirectoryContents(dirPath, relPath string, options TreeOptions, currentD
 			subPath := filepath.Join(fullPath, entry.Name())
 			subEntries, err := os.ReadDir(subPath)
 			if err == nil && len(subEntries) > 0 {
-				// Count visible children
+				// Count visible children (consistent with main iteration loop)
 				visibleChildren := 0
 				for _, subEntry := range subEntries {
-					if !strings.HasPrefix(subEntry.Name(), ".") && !skipDirs[subEntry.Name()] {
-						visibleChildren++
+					if subEntry.IsDir() && skipDirs[subEntry.Name()] {
+						continue
 					}
+					visibleChildren++
 				}
 
 				node.HasMore = visibleChildren > 0

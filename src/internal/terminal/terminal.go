@@ -12,8 +12,8 @@ import (
 )
 
 var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
+	ReadBufferSize:  16384,
+	WriteBufferSize: 16384,
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
@@ -68,7 +68,7 @@ func New() (http.Handler, error) {
 			}()
 
 			for {
-				buf := make([]byte, 1024)
+				buf := make([]byte, 8192)
 				n, err := tty.Read(buf)
 				if err != nil {
 					log.Printf("failed to read from pty: %v", err)

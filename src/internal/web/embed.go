@@ -89,33 +89,11 @@ func handleFileWatch(w http.ResponseWriter, r *http.Request) {
 		root = os.Getenv("LITE_IDE_ROOT")
 	}
 	if root == "" {
-		// Default to current directory, but check if it's too large
 		cwd, err := os.Getwd()
 		if err != nil {
 			root = "."
 		} else {
-			// Check if current directory has too many subdirectories
-			dirCount := 0
-			filepath.Walk(cwd, func(path string, info os.FileInfo, err error) error {
-				if err != nil {
-					return nil
-				}
-				if info.IsDir() {
-					dirCount++
-					if dirCount > 1000 {
-						return filepath.SkipDir
-					}
-				}
-				return nil
-			})
-
-			if dirCount > 1000 {
-				log.Printf("Warning: current directory has %d subdirectories, using project root instead", dirCount)
-				// Use the project root directory instead
-				root = "/home/noobi/Desktop/projects/lite-ide"
-			} else {
-				root = cwd
-			}
+			root = cwd
 		}
 	}
 
@@ -127,32 +105,15 @@ func handleFileWatch(w http.ResponseWriter, r *http.Request) {
 	}
 	defer watcher.Close()
 
-	// Add root directory and first 2 levels of subdirectories to watcher (lazy loading)
-	log.Printf("DEBUG: Starting file watch setup for root: %s", root)
-
-	// First, let's check what directories exist in the root
-	entries, err := os.ReadDir(root)
-	if err != nil {
-		log.Printf("DEBUG: Cannot read root directory %s: %v", root, err)
-	} else {
-		log.Printf("DEBUG: Root directory %s contains %d entries:", root, len(entries))
-		for _, entry := range entries {
-			if entry.IsDir() {
-				log.Printf("DEBUG:   Directory: %s", entry.Name())
-			}
-		}
-	}
-
+	// Add root directory and first 2 levels of subdirectories to watcher
 	err = addLazyWatch(watcher, root, 2)
 	if err != nil {
 		log.Printf("ERROR: addLazyWatch failed for root %s: %v", root, err)
-		// Send error to client via SSE
 		errorMsg := fmt.Sprintf("Failed to setup file watching for %s: %v", root, err)
 		fmt.Fprintf(w, "event: error\ndata: %s\n\n", errorMsg)
 		w.(http.Flusher).Flush()
 		return
 	}
-	log.Printf("DEBUG: File watch setup completed successfully for root: %s", root)
 
 	// Create a channel to signal client disconnection
 	clientGone := r.Context().Done()
@@ -233,26 +194,19 @@ func handleExpandFolder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Build full path
+	// Verify the path exists and is a directory
 	fullPath := filepath.Join(rootPath, req.Path)
-
-	// Create a temporary watcher to add the directory
-	watcher, err := fsnotify.NewWatcher()
+	info, err := os.Stat(fullPath)
 	if err != nil {
-		log.Printf("Failed to create temporary watcher for expansion: %v", err)
-		http.Error(w, "failed to create watcher", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
-	defer watcher.Close()
-
-	// Add the directory and its subdirectories to watch
-	if err := addDirectoryWatch(watcher, fullPath); err != nil {
-		log.Printf("Failed to add watch for expanded folder %s: %v", fullPath, err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if !info.IsDir() {
+		http.Error(w, "path is not a directory", http.StatusBadRequest)
 		return
 	}
 
-	// Return success response
+	// Return success — the SSE watcher in handleFileWatch will pick up changes
 	response := map[string]string{
 		"status":  "success",
 		"message": fmt.Sprintf("Folder expanded: %s", req.Path),
@@ -310,8 +264,6 @@ func addLazyWatch(watcher *fsnotify.Watcher, root string, maxDepth int) error {
 	watchCount := 0
 	maxWatches := 1000
 
-	log.Printf("Starting lazy watch for root: %s with maxDepth: %d", root, maxDepth)
-
 	var walkDir func(string, int) error
 	walkDir = func(path string, depth int) error {
 		if depth > maxDepth {
@@ -320,7 +272,6 @@ func addLazyWatch(watcher *fsnotify.Watcher, root string, maxDepth int) error {
 
 		info, err := os.Stat(path)
 		if err != nil {
-			log.Printf("Skipping inaccessible path: %s (error: %v)", path, err)
 			return nil
 		}
 
@@ -330,18 +281,16 @@ func addLazyWatch(watcher *fsnotify.Watcher, root string, maxDepth int) error {
 
 		base := filepath.Base(path)
 		if shouldSkipDirectory(base) {
-			log.Printf("Skipping filtered directory: %s (base: %s)", path, base)
 			return nil
 		}
 
 		if processed[path] {
-			log.Printf("Skipping already processed directory: %s", path)
 			return nil
 		}
 		processed[path] = true
 
 		if watchCount >= maxWatches {
-			log.Printf("Warning: reached maximum watch limit (%d), skipping remaining directories", maxWatches)
+			log.Printf("Warning: reached maximum watch limit (%d)", maxWatches)
 			return nil
 		}
 
@@ -350,12 +299,10 @@ func addLazyWatch(watcher *fsnotify.Watcher, root string, maxDepth int) error {
 			return nil
 		}
 		watchCount++
-		log.Printf("Added watch for directory: %s (depth: %d, total watches: %d)", path, depth, watchCount)
 
 		// Read directory contents
 		entries, err := os.ReadDir(path)
 		if err != nil {
-			log.Printf("Cannot read directory contents: %s (error: %v)", path, err)
 			return nil
 		}
 
@@ -372,9 +319,7 @@ func addLazyWatch(watcher *fsnotify.Watcher, root string, maxDepth int) error {
 		return nil
 	}
 
-	err := walkDir(root, 0)
-	log.Printf("Lazy watch completed. Total directories watched: %d", watchCount)
-	return err
+	return walkDir(root, 0)
 }
 
 // addDirectoryWatch adds a specific directory and its immediate subdirectories to the watcher
@@ -382,37 +327,29 @@ func addDirectoryWatch(watcher *fsnotify.Watcher, dirPath string) error {
 	watchCount := 0
 	maxWatches := 1000
 
-	log.Printf("Expanding folder watch for: %s", dirPath)
-
 	// Add the directory itself
 	info, err := os.Stat(dirPath)
 	if err != nil {
-		log.Printf("Cannot stat directory: %s (error: %v)", dirPath, err)
 		return err
 	}
 
 	if !info.IsDir() {
-		log.Printf("Path is not a directory: %s", dirPath)
 		return fmt.Errorf("path is not a directory: %s", dirPath)
 	}
 
 	base := filepath.Base(dirPath)
 	if shouldSkipDirectory(base) {
-		log.Printf("Skipping filtered directory during expansion: %s (base: %s)", dirPath, base)
 		return nil
 	}
 
 	if err := watcher.Add(dirPath); err != nil {
-		log.Printf("Failed to add watch for directory: %s (error: %v)", dirPath, err)
 		return err
 	}
 	watchCount++
-	log.Printf("Added watch for expanded directory: %s", dirPath)
 
 	// Add immediate subdirectories
 	entries, err := os.ReadDir(dirPath)
 	if err != nil {
-		log.Printf("Cannot read directory contents: %s (error: %v)", dirPath, err)
 		return nil
 	}
 
@@ -421,25 +358,20 @@ func addDirectoryWatch(watcher *fsnotify.Watcher, dirPath string) error {
 			subPath := filepath.Join(dirPath, entry.Name())
 			base := filepath.Base(subPath)
 			if shouldSkipDirectory(base) {
-				log.Printf("Skipping filtered subdirectory: %s (base: %s)", subPath, base)
 				continue
 			}
 
 			if watchCount >= maxWatches {
-				log.Printf("Warning: reached maximum watch limit (%d), skipping remaining directories", maxWatches)
 				break
 			}
 
 			if err := watcher.Add(subPath); err != nil {
-				log.Printf("Warning: failed to add watch for %s: %v", subPath, err)
 				continue
 			}
 			watchCount++
-			log.Printf("Added watch for subdirectory: %s (total: %d)", subPath, watchCount)
 		}
 	}
 
-	log.Printf("Folder expansion completed for: %s (total directories watched: %d)", dirPath, watchCount)
 	return nil
 }
 

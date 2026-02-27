@@ -1,6 +1,6 @@
 module lite-ide
 
-go 1.23.0
+go 1.24.0
 
 toolchain go1.24.4
 
@@ -10,4 +10,4 @@ require (
 	github.com/gorilla/websocket v1.5.3
 )
 
-require golang.org/x/sys v0.13.0 // indirect
+require golang.org/x/sys v0.41.0 // indirect
