@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import {
-  Files, Terminal as TerminalIcon, Search, GitBranch, Settings,
+  Files, Terminal as TerminalIcon, Search,
   ChevronRight, PanelBottomClose, PanelBottom
 } from 'lucide-react'
 import { FileExplorer } from '@/components/FileExplorer'
@@ -426,12 +426,6 @@ export function HomeContent() {
         {/* Status Bar */}
         {config.showEditor && (
           <div className="h-[22px] bg-[#007acc] flex items-center justify-between px-3 text-xs text-white flex-shrink-0 select-none">
-            <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1">
-                <GitBranch className="w-3 h-3" />
-                main
-              </span>
-            </div>
             <div className="flex items-center gap-3">
               {activeTab && (
                 <>
