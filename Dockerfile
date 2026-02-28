@@ -12,7 +12,7 @@ FROM golang:1.24-alpine AS go-builder
 RUN apk add --no-cache curl && sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
 WORKDIR /app
 RUN mkdir src
-COPY src/go.mod src/go.sum ./src
+COPY src/go.mod src/go.sum ./src/
 RUN cd src && go mod download
 COPY src/ ./src
 COPY Taskfile.yml ./
@@ -21,10 +21,10 @@ COPY --from=ui-builder /app/ui/out ./ui/out
 RUN task go:build
 
 # Final stage
-FROM ubuntu:24.04
-RUN apt-get update && apt-get install -y ca-certificates zsh curl git
+FROM ubuntu:25.10
+RUN apt update && apt install -y ca-certificates zsh curl git && apt clean
 WORKDIR /root/
-RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" && chsh -s /bin/zsh
+RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" && chsh -s /bin/zsh && rm -rf /root/.zcompdump /root/.zcompdump*
 COPY --from=go-builder /app/build/ide /usr/local/bin/ide
 EXPOSE 3000
 ENTRYPOINT ["zsh"]

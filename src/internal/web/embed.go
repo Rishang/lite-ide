@@ -59,6 +59,12 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Handle copy operations
+	if r.URL.Path == "/copy" && r.Method == "POST" {
+		handleCopy(w, r)
+		return
+	}
+
 	// Handle file operations
 	switch r.Method {
 	case "GET":
@@ -620,6 +626,45 @@ func handlePatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.NotFound(w, r)
+}
+
+func handleCopy(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("content-type", "application/json")
+
+	// Get root path from query parameter
+	rootPath := r.URL.Query().Get("root")
+	if rootPath == "" || rootPath == "." {
+		if cwd, err := os.Getwd(); err == nil {
+			rootPath = cwd
+		} else {
+			rootPath = "."
+		}
+	}
+
+	// Parse request body for source and destination paths
+	var req struct {
+		Source      string `json:"source"`
+		Destination string `json:"destination"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if req.Source == "" || req.Destination == "" {
+		http.Error(w, "source and destination are required", http.StatusBadRequest)
+		return
+	}
+
+	// Perform the copy operation
+	if err := vfs.Copy(req.Source, req.Destination, rootPath); err != nil {
+		log.Printf("Failed to copy %s to %s: %v", req.Source, req.Destination, err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("Successfully copied %s to %s", req.Source, req.Destination)
+	w.WriteHeader(http.StatusOK)
 }
 
 func handleDelete(w http.ResponseWriter, r *http.Request) {

@@ -320,6 +320,81 @@ func RenameFile(oldPath, newPath, rootPath string) error {
 	return os.Rename(oldFullPath, newFullPath)
 }
 
+// Copy copies a file or directory recursively
+func Copy(srcPath, dstPath, rootPath string) error {
+	srcP, err := cleanAndValidatePath(srcPath)
+	if err != nil {
+		return err
+	}
+	dstP, err := cleanAndValidatePath(dstPath)
+	if err != nil {
+		return err
+	}
+
+	fullSrc := filepath.Join(rootPath, srcP)
+	fullDst := filepath.Join(rootPath, dstP)
+
+	info, err := os.Stat(fullSrc)
+	if err != nil {
+		return err
+	}
+
+	if info.IsDir() {
+		return copyDir(fullSrc, fullDst)
+	}
+	return copyFile(fullSrc, fullDst)
+}
+
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+		return err
+	}
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	if _, err = in.WriteTo(out); err != nil {
+		return err
+	}
+	return out.Sync()
+}
+
+func copyDir(src, dst string) error {
+	if err := os.MkdirAll(dst, 0755); err != nil {
+		return err
+	}
+
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		srcPath := filepath.Join(src, entry.Name())
+		dstPath := filepath.Join(dst, entry.Name())
+
+		if entry.IsDir() {
+			if err := copyDir(srcPath, dstPath); err != nil {
+				return err
+			}
+		} else {
+			if err := copyFile(srcPath, dstPath); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // cleanAndValidatePath cleans and validates a path
 func cleanAndValidatePath(p string) (string, error) {
 	p = strings.TrimPrefix(p, "/")

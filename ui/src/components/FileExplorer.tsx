@@ -115,6 +115,7 @@ export function FileExplorer({
 }: FileExplorerProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; node: FileNode | null } | null>(null)
+  const [clipboard, setClipboard] = useState<{ action: 'cut' | 'copy'; path: string; name: string; isFolder: boolean } | null>(null)
   const [createState, setCreateState] = useState<CreateState | null>(null)
   const [renameState, setRenameState] = useState<RenameState | null>(null)
   const [deleteNode, setDeleteNode] = useState<FileNode | null>(null)
@@ -124,6 +125,7 @@ export function FileExplorer({
   const [isPathEditing, setIsPathEditing] = useState<boolean>(false)
 
   const explorerRef = useRef<HTMLDivElement>(null)
+  const contextMenuRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const pathInputRef = useRef<HTMLInputElement>(null)
   const isCommittingRef = useRef(false) // Prevents blur race on rename/create
@@ -146,19 +148,22 @@ export function FileExplorer({
     }
   }, [errorMsg])
 
-  // Close context menu on any click (VS Code behavior)
+  // Close context menu when clicking outside it, or pressing Escape
   useEffect(() => {
     if (!contextMenu) return
-    const handleClickOutside = (event: MouseEvent) => {
-      setContextMenu(null)
+    const handleMouseDown = (event: MouseEvent) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(event.target as Node)) {
+        setContextMenu(null)
+      }
     }
-    // Use setTimeout so the menu render doesn't immediately close
-    const timer = setTimeout(() => {
-      document.addEventListener('mousedown', handleClickOutside)
-    }, 0)
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setContextMenu(null)
+    }
+    document.addEventListener('mousedown', handleMouseDown)
+    document.addEventListener('keydown', handleKeyDown)
     return () => {
-      clearTimeout(timer)
-      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('mousedown', handleMouseDown)
+      document.removeEventListener('keydown', handleKeyDown)
     }
   }, [contextMenu])
 
@@ -179,21 +184,16 @@ export function FileExplorer({
   // Load directory contents for lazy loading
   const loadDirectoryContents = useCallback(async (folderPath: string) => {
     try {
-      console.log('Loading directory contents for:', folderPath)
       const response = await fetch(
         `${config.apiEndpoint}/api/files?root=${encodeURIComponent(currentPath)}&path=${encodeURIComponent(folderPath)}`
       )
 
       if (response.ok) {
         const children = await response.json() as FileNode[] | null
-
-        // Update the tree with loaded children (handle null for empty folders)
         setLocalTree(prevTree => updateTreeWithChildren(prevTree, folderPath, children || []))
-      } else {
-        console.warn('Failed to load directory contents:', folderPath)
       }
-    } catch (error) {
-      console.error('Error loading directory contents:', folderPath, error)
+    } catch {
+      // silently ignore lazy load errors
     }
   }, [currentPath])
 
@@ -255,27 +255,16 @@ export function FileExplorer({
   // Expand folder for lazy loading
   const expandFolder = useCallback(async (folderPath: string) => {
     try {
-      console.log('Expanding folder for lazy loading:', folderPath)
-
-      // Load directory contents using the new lazy loading endpoint
       await loadDirectoryContents(folderPath)
 
       // Also expand for SSE watching
-      const response = await fetch(`${config.apiEndpoint}/api/expand?root=${encodeURIComponent(currentPath)}`, {
+      await fetch(`${config.apiEndpoint}/api/expand?root=${encodeURIComponent(currentPath)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: folderPath })
       })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.warn('Failed to expand folder for watching:', folderPath, 'Error:', errorText)
-      } else {
-        const result = await response.json()
-        console.log('Folder expansion successful:', result)
-      }
-    } catch (error) {
-      console.error('Error expanding folder:', folderPath, error)
+    } catch {
+      // silently ignore expand errors
     }
   }, [currentPath, loadDirectoryContents])
 
@@ -350,6 +339,7 @@ export function FileExplorer({
   // Context menu handlers
   const handleContextMenu = useCallback((e: React.MouseEvent, node: FileNode) => {
     e.preventDefault()
+    e.stopPropagation() // Prevent bubbling to tree container (which would set node: null)
     // Clamp position to keep menu within viewport
     const menuWidth = 180
     const menuHeight = 200
@@ -375,7 +365,6 @@ export function FileExplorer({
   }
 
   const handleCreate = useCallback((type: 'file' | 'folder', parentPath: string | null) => {
-    console.log('handleCreate called with:', { type, parentPath });
     setCreateState({ type, parentPath, name: '', isActive: true })
     setContextMenu(null)
   }, [])
@@ -389,6 +378,60 @@ export function FileExplorer({
     setDeleteNode(node)
     setContextMenu(null)
   }, [])
+
+  const handleCut = useCallback((node: FileNode) => {
+    setClipboard({ action: 'cut', path: node.path, name: node.name, isFolder: node.type === 'folder' })
+    setContextMenu(null)
+  }, [])
+
+  const handleCopy = useCallback((node: FileNode) => {
+    setClipboard({ action: 'copy', path: node.path, name: node.name, isFolder: node.type === 'folder' })
+    setContextMenu(null)
+  }, [])
+
+  const handlePaste = useCallback(async (targetFolderNode: FileNode | null) => {
+    if (!clipboard) return
+
+    try {
+      // Determine destination folder
+      let destFolder = ''
+      if (targetFolderNode) {
+        destFolder = targetFolderNode.type === 'folder'
+          ? targetFolderNode.path
+          : (targetFolderNode.path.split('/').slice(0, -1).join('/') || '')
+      }
+
+      const destPath = buildFullPath(destFolder, clipboard.name)
+
+      if (clipboard.action === 'cut') {
+        // Move file using the rename PATCH API
+        await apiCall(`/${normalizePath(clipboard.path)}`, 'PATCH', { newPath: destPath })
+        if (onFileRename) {
+          onFileRename(clipboard.path, destPath)
+        }
+        setClipboard(null) // Clear clipboard after cut
+      } else {
+        // Copy: use raw fetch because apiCall prefixes /api/files, but copy endpoint is /api/copy
+        const response = await fetch(
+          `${config.apiEndpoint}/api/copy?root=${encodeURIComponent(currentPath)}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source: clipboard.path, destination: destPath })
+          }
+        )
+        if (!response.ok) {
+          const err = await response.text()
+          throw new Error(`HTTP ${response.status}: ${err}`)
+        }
+      }
+
+      setContextMenu(null)
+    } catch (error) {
+      console.error('Paste error:', error)
+      setErrorMsg(error instanceof Error ? error.message : 'Failed to paste')
+    }
+  }, [clipboard, buildFullPath, onFileRename])
 
   // Sort nodes: folders first, then files, both alphabetical
   const sortNodes = useCallback((nodes: FileNode[]): FileNode[] => {
@@ -414,9 +457,10 @@ export function FileExplorer({
       const isCreating = createState?.isActive && createState.parentPath === node.path
       const isRenaming = renameState?.isActive && renameState.node.path === node.path
       const isActiveFile = node.type === 'file' && node.path === activeFilePath
+      const isCut = clipboard?.action === 'cut' && clipboard.path === node.path
 
       return (
-        <div key={node.path}>
+        <div key={node.path} style={{ opacity: isCut ? 0.4 : 1 }}>
           <div
             className={cn(
               'flex items-center relative cursor-pointer text-[13px] select-none',
@@ -569,7 +613,8 @@ export function FileExplorer({
     buildFullPath,
     handleContextMenu,
     activeFilePath,
-    sortNodes
+    sortNodes,
+    clipboard
   ])
 
   return (
@@ -690,13 +735,12 @@ export function FileExplorer({
         </div>
       )}
 
-      {/* Context menu — closes on click-outside like VS Code */}
+      {/* Context menu — closes only on outside click so buttons can fire */}
       {contextMenu && (
         <div
+          ref={contextMenuRef}
           className="fixed z-50 bg-[#252526] border border-[#454545] shadow-lg py-1 min-w-[200px]"
           style={{ left: contextMenu.x, top: contextMenu.y }}
-          onClick={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
         >
           {/* Node-specific actions */}
           {contextMenu.node && (
@@ -716,6 +760,19 @@ export function FileExplorer({
               <div className="border-t border-[#454545] my-1" />
               <button
                 className="flex items-center px-6 py-[4px] text-[13px] text-[#cccccc] hover:bg-[#094771] hover:text-white w-full text-left"
+                onClick={() => handleCut(contextMenu.node!)}
+              >
+                Cut
+              </button>
+              <button
+                className="flex items-center px-6 py-[4px] text-[13px] text-[#cccccc] hover:bg-[#094771] hover:text-white w-full text-left"
+                onClick={() => handleCopy(contextMenu.node!)}
+              >
+                Copy
+              </button>
+              <div className="border-t border-[#454545] my-1" />
+              <button
+                className="flex items-center px-6 py-[4px] text-[13px] text-[#cccccc] hover:bg-[#094771] hover:text-white w-full text-left"
                 onClick={() => copyPath(contextMenu.node!.path)}
               >
                 Copy Path
@@ -723,6 +780,24 @@ export function FileExplorer({
               <div className="border-t border-[#454545] my-1" />
             </>
           )}
+
+          {/* Paste action (available everywhere if clipboard has item) */}
+          <button
+            className={cn(
+              "flex items-center px-6 py-[4px] text-[13px] w-full text-left",
+              clipboard
+                ? "text-[#cccccc] hover:bg-[#094771] hover:text-white"
+                : "text-[#555555] cursor-not-allowed"
+            )}
+            onClick={() => {
+              if (clipboard) handlePaste(contextMenu.node)
+            }}
+            disabled={!clipboard}
+          >
+            Paste
+          </button>
+          <div className="border-t border-[#454545] my-1" />
+
           {/* Create actions */}
           <button
             className="flex items-center px-6 py-[4px] text-[13px] text-[#cccccc] hover:bg-[#094771] hover:text-white w-full text-left"

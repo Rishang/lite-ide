@@ -49,3 +49,9 @@ tasks:
     cmds:
       - task: ui:build
       - task: go:build
+
+  docker:push:
+    desc: Push the docker image
+    cmds:
+      - docker build -t rishang/lite-ide .
+      - docker push rishang/lite-ide
