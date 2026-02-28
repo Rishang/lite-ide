@@ -22,7 +22,7 @@ RUN task go:build
 
 # Final stage
 FROM ubuntu:25.10
-RUN apt update && apt install -y sudo vim nano ca-certificates zsh curl git && apt clean
+RUN apt update && apt install -y sudo fzf bat vim nano ca-certificates zsh curl git && apt clean
 WORKDIR /root/
 RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" && chsh -s /bin/zsh && rm -rf /root/.zcompdump /root/.zcompdump*
 COPY --from=go-builder /app/build/ide /usr/local/bin/ide
