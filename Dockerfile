@@ -26,5 +26,6 @@ RUN apt update && apt install -y ca-certificates zsh curl git && apt clean
 WORKDIR /root/
 RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" && chsh -s /bin/zsh && rm -rf /root/.zcompdump /root/.zcompdump*
 COPY --from=go-builder /app/build/ide /usr/local/bin/ide
-EXPOSE 3000
-ENTRYPOINT ["zsh"]
+ENV PORT=80
+EXPOSE 80
+ENTRYPOINT ["ide"]
