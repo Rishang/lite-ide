@@ -43,6 +43,9 @@ dependencies:
     version: 4.2.1
 
 devDependencies:
+  '@tailwindcss/oxide-linux-x64-gnu':
+    specifier: 4.2.1
+    version: 4.2.1
   '@types/node':
     specifier: ^22.19.13
     version: 22.19.13
@@ -813,8 +816,6 @@ packages:
     cpu: [x64]
     os: [linux]
     requiresBuild: true
-    dev: false
-    optional: true
 
   /@tailwindcss/oxide-linux-x64-musl@4.2.1:
     resolution: {integrity: sha512-5r1X2FKnCMUPlXTWRYpHdPYUY6a1Ar/t7P24OuiEdEOmms5lyqjDRvVY1yy9Rmioh+AunQ0rWiOTPE8F9A3v5g==}
