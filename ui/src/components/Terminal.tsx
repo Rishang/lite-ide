@@ -203,6 +203,6 @@ export function Terminal() {
   }, [])
 
   return (
-    <div className="h-full w-full p-2" ref={termRef} />
+    <div className="h-full w-full border-t" ref={termRef} />
   )
 } 
