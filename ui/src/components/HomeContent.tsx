@@ -59,8 +59,8 @@ export function HomeContent() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl+` toggle terminal
-      if (e.ctrlKey && e.key === '`') {
+      // Ctrl+` toggle terminal (Backquote for layout-independent detection)
+      if (e.ctrlKey && (e.key === '`' || e.code === 'Backquote')) {
         e.preventDefault()
         if (!config.showEditor) {
           setIsTerminalOpen(prev => !prev)
