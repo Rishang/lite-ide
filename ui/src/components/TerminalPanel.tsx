@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { X, Plus, Maximize2, SplitSquareHorizontal, AlertCircle, AlertTriangle, Info, Lightbulb } from 'lucide-react'
+import { X, Plus, Maximize2, ChevronDown, AlertCircle, AlertTriangle, Info, Lightbulb } from 'lucide-react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faTerminal } from '@fortawesome/free-solid-svg-icons'
 import dynamic from 'next/dynamic'
@@ -35,6 +35,7 @@ const Severity = { Error: 8, Warning: 4, Info: 2, Hint: 1 } as const
 
 interface TerminalPanelProps {
   onMaximize?: () => void
+  onMinimize?: () => void
   onClose?: () => void
   isMaximized?: boolean
   markers?: MarkerData[]
@@ -45,7 +46,7 @@ interface TerminalPanelProps {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function TerminalPanel({ onMaximize, onClose, isMaximized, markers = [], activeFilePath }: TerminalPanelProps) {
+export function TerminalPanel({ onMaximize, onMinimize, onClose, isMaximized, markers = [], activeFilePath }: TerminalPanelProps) {
   const [activeSection, setActiveSection] = useState<PanelSection>('TERMINAL')
   const counterRef = useRef(1)
   const [instances, setInstances] = useState<TerminalInstance[]>([
@@ -118,9 +119,11 @@ export function TerminalPanel({ onMaximize, onClose, isMaximized, markers = [], 
             <Plus size={14} />
           </ActionBtn>
           <Divider />
-          <ActionBtn title="Split Terminal">
-            <SplitSquareHorizontal size={14} />
-          </ActionBtn>
+          {onMinimize && (
+            <ActionBtn title="Minimize Panel" onClick={onMinimize}>
+              <ChevronDown size={14} />
+            </ActionBtn>
+          )}
           <Divider />
           {onMaximize && (
             <ActionBtn title={isMaximized ? 'Restore Panel Size' : 'Maximize Panel Size'} onClick={onMaximize}>

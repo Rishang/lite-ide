@@ -459,6 +459,7 @@ export function HomeContent() {
           >
             <TerminalPanel
               onMaximize={handleTerminalMaximize}
+              onMinimize={() => setIsTerminalMinimized(true)}
               markers={markers}
               activeFilePath={activeTab}
             />
