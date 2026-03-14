@@ -48,12 +48,12 @@ export function HomeContent() {
     config.showEditor ? false : !config.showTerminal,
   );
   const [isTerminalMaximized, setIsTerminalMaximized] = useState(false);
-  const [explorerWidth, setExplorerWidth] = useState(256);
+  const [explorerWidth, setExplorerWidth] = useState(226);
   const [isResizing, setIsResizing] = useState(false);
   const [isExplorerMinimized, setIsExplorerMinimized] = useState(
     !config.showEditor,
   );
-  const [lastExplorerWidth, setLastExplorerWidth] = useState(256);
+  const [lastExplorerWidth, setLastExplorerWidth] = useState(226);
   const [windowHeight, setWindowHeight] = useState(600);
   const [activePanel, setActivePanel] = useState<string>("files");
   const [markers, setMarkers] = useState<MarkerData[]>([]);
