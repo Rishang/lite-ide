@@ -15,8 +15,8 @@ interface ResizablePanelProps {
 export function ResizablePanel({
   children,
   defaultHeight = 300,
-  minHeight = 100,
-  maxHeight = 600,
+  minHeight = 80,
+  maxHeight = 800,
   className = "",
   showResizeHandle = true,
   isMaximized = false,
@@ -28,17 +28,12 @@ export function ResizablePanel({
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing || !panelRef.current) return;
-
       const rect = panelRef.current.getBoundingClientRect();
-      const newHeight = rect.bottom - e.clientY;
-
-      const clampedHeight = Math.max(minHeight, Math.min(maxHeight, newHeight));
-      setHeight(clampedHeight);
+      const newHeight = Math.max(minHeight, Math.min(maxHeight, rect.bottom - e.clientY));
+      setHeight(newHeight);
     };
 
-    const handleMouseUp = () => {
-      setIsResizing(false);
-    };
+    const handleMouseUp = () => setIsResizing(false);
 
     if (isResizing) {
       document.addEventListener("mousemove", handleMouseMove);
@@ -55,27 +50,36 @@ export function ResizablePanel({
     };
   }, [isResizing, minHeight, maxHeight]);
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsResizing(true);
-  };
-
   return (
     <div
       ref={panelRef}
-      className={`flex flex-col mt-2 ${className}`}
-      // When maximized, omit inline height so flex-1 in className can take over.
-      // When normal/minimized, use the tracked pixel height.
+      className={`flex flex-col ${className}`}
       style={isMaximized ? undefined : { height: `${height}px` }}
     >
-      {/* Resize handle — hidden when maximized or explicitly disabled */}
+      {/* Resize sash — matches VS Code's 4 px hit-target with a 1 px visual line */}
       {showResizeHandle && !isMaximized && (
         <div
-          className="h-1 bg-[#333] hover:bg-blue-500 cursor-ns-resize transition-colors duration-200 relative group"
-          onMouseDown={handleMouseDown}
+          onMouseDown={e => { e.preventDefault(); setIsResizing(true); }}
+          className="group relative h-[4px] shrink-0 cursor-ns-resize z-10"
         >
-          <div className="absolute inset-0 -top-1 -bottom-1" />
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-1 bg-[#666] rounded opacity-0 group-hover:opacity-100 transition-opacity" />
+          {/* Visible line */}
+          <div
+            className={[
+              "absolute inset-x-0 top-[1.5px] h-[1px] transition-colors duration-150",
+              isResizing ? "bg-[#007fd4]" : "bg-[#333] group-hover:bg-[#007fd4]",
+            ].join(" ")}
+          />
+          {/* Drag grip dots */}
+          <div
+            className={[
+              "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex gap-[3px] transition-opacity duration-150",
+              isResizing ? "opacity-100" : "opacity-0 group-hover:opacity-60",
+            ].join(" ")}
+          >
+            {[0, 1, 2].map(i => (
+              <span key={i} className="w-[3px] h-[3px] rounded-full bg-[#007fd4]" />
+            ))}
+          </div>
         </div>
       )}
 

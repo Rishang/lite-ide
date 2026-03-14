@@ -10,7 +10,7 @@ import {
   PanelBottom,
 } from "lucide-react";
 import { FileExplorer } from "@/components/FileExplorer";
-import { Editor } from "@/components/Editor";
+import { Editor, MarkerData } from "@/components/Editor";
 import { TabBar } from "@/components/TabBar";
 import { ResizablePanel } from "@/components/ResizablePanel";
 import { FileNode } from "@/types/file";
@@ -56,6 +56,7 @@ export function HomeContent() {
   const [lastExplorerWidth, setLastExplorerWidth] = useState(256);
   const [windowHeight, setWindowHeight] = useState(600);
   const [activePanel, setActivePanel] = useState<string>("files");
+  const [markers, setMarkers] = useState<MarkerData[]>([]);
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -428,6 +429,7 @@ export function HomeContent() {
                   onSave={() =>
                     saveFile(activeTab, tabs.get(activeTab)?.content || "")
                   }
+                  onMarkersChange={setMarkers}
                 />
               ) : (
                 <div className="h-full flex flex-col items-center justify-center text-[#5a5a5a]">
@@ -455,7 +457,11 @@ export function HomeContent() {
             `}
             showResizeHandle={config.showEditor}
           >
-            <TerminalPanel onMaximize={handleTerminalMaximize} />
+            <TerminalPanel
+              onMaximize={handleTerminalMaximize}
+              markers={markers}
+              activeFilePath={activeTab}
+            />
           </ResizablePanel>
         )}
 

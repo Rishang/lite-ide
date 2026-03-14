@@ -4,6 +4,17 @@ import { useEffect, useRef, Suspense } from 'react'
 import { LazyMonacoEditor, LoadingScreen } from './MonacoEditor'
 import { getLanguageFromPath } from '@/lib/common'
 
+export interface MarkerData {
+  severity: number   // monaco.MarkerSeverity: Error=8, Warning=4, Info=2, Hint=1
+  message: string
+  startLineNumber: number
+  startColumn: number
+  endLineNumber: number
+  endColumn: number
+  source?: string
+  code?: string | { value: string; target: { toString(): string } }
+}
+
 interface EditorProps {
   content: string
   path: string
@@ -11,10 +22,13 @@ interface EditorProps {
   theme?: string
   onChange: (value: string) => void
   onSave: () => void
+  onMarkersChange?: (markers: MarkerData[]) => void
 }
 
-export function Editor({ content, path, language, theme = 'vs-dark', onChange, onSave }: EditorProps) {
+export function Editor({ content, path, language, theme = 'vs-dark', onChange, onSave, onMarkersChange }: EditorProps) {
   const editorRef = useRef<any>(null)
+  const onMarkersChangeRef = useRef(onMarkersChange)
+  onMarkersChangeRef.current = onMarkersChange
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -51,8 +65,24 @@ export function Editor({ content, path, language, theme = 'vs-dark', onChange, o
             defaultLanguage={getLanguage(path)}
             value={content}
             onChange={(value: string) => onChange(value || '')}
-            onMount={(editor: any) => {
+            onMount={(editor: any, monaco: any) => {
               editorRef.current = editor
+
+              // Emit markers (diagnostics) whenever they change for this model
+              const emitMarkers = () => {
+                const model = editor.getModel()
+                if (!model || !onMarkersChangeRef.current) return
+                const markers: MarkerData[] = monaco.editor.getModelMarkers({ resource: model.uri })
+                onMarkersChangeRef.current(markers)
+              }
+
+              // Listen for model marker changes on the editor
+              const disposable = editor.onDidChangeModelDecorations(() => {
+                // Markers update slightly after decorations; defer one tick
+                setTimeout(emitMarkers, 0)
+              })
+
+              editor._markerDisposable = disposable
             }}
             options={{
               minimap: {
