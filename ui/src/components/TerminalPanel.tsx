@@ -86,7 +86,7 @@ export function TerminalPanel({ onMaximize, onClose, isMaximized, markers = [], 
     <div className="h-full flex flex-col bg-[#1e1e1e] select-none font-['Segoe_UI',system-ui,sans-serif]">
 
       {/* ── Top Tab Bar ──────────────────────────────────────────────────── */}
-      <div className="flex items-stretch justify-between bg-[#181818] border-b border-[#252526] shrink-0">
+      <div className="flex items-stretch justify-between bg-[#181818] border-b border-[#252526] shrink-0 h-[35px]">
 
         {/* Section tabs */}
         <div className="flex items-stretch overflow-x-auto scrollbar-none">
@@ -97,18 +97,15 @@ export function TerminalPanel({ onMaximize, onClose, isMaximized, markers = [], 
                 key={section}
                 onClick={() => setActiveSection(section)}
                 className={[
-                  'relative px-4 py-1 text-[11px] font-medium tracking-wide whitespace-nowrap transition-colors duration-100 border-r border-[#252526]',
+                  'px-3 h-full text-[11px] font-medium tracking-widest uppercase whitespace-nowrap transition-colors duration-100',
                   active
-                    ? 'text-white bg-[#1e1e1e]'
-                    : 'text-[#9d9d9d] bg-[#181818] hover:text-[#cccccc] hover:bg-[#1e1e1e]',
+                    ? 'text-white bg-[#2d2d2d]'
+                    : 'text-[#8c8c8c] hover:text-[#cccccc] hover:bg-[#262626]',
                 ].join(' ')}
               >
-                {active && (
-                  <span className="absolute inset-x-0 top-0 h-[1px] bg-[#007fd4]" />
-                )}
                 {section}
                 {section === 'PROBLEMS' && markers.length > 0 && (
-                  <span className="ml-1.5 text-[10px] text-[#9d9d9d]">{markers.length}</span>
+                  <span className="ml-1.5 text-[10px] text-[#8c8c8c]">{markers.length}</span>
                 )}
               </button>
             )
