@@ -43,19 +43,15 @@ interface TerminalPanelProps {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-let _counter = 1
-function nextId() {
-  return `term-${_counter++}`
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function TerminalPanel({ onMaximize, onClose, isMaximized, markers = [], activeFilePath }: TerminalPanelProps) {
   const [activeSection, setActiveSection] = useState<PanelSection>('TERMINAL')
+  const counterRef = useRef(1)
   const [instances, setInstances] = useState<TerminalInstance[]>([
-    { id: nextId(), label: 'zsh', cwd: 'lab-images' },
+    { id: 'term-1', label: 'zsh 1' },
   ])
-  const [activeId, setActiveId] = useState<string>(instances[0].id)
+  const [activeId, setActiveId] = useState<string>('term-1')
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const termRefs = useRef<Map<string, HTMLDivElement | null>>(new Map())
 
@@ -70,8 +66,9 @@ export function TerminalPanel({ onMaximize, onClose, isMaximized, markers = [], 
   }, [activeId])
 
   const addInstance = () => {
-    const id = nextId()
-    setInstances(prev => [...prev, { id, label: 'zsh' }])
+    const num = ++counterRef.current
+    const id = `term-${num}`
+    setInstances(prev => [...prev, { id, label: `zsh ${num}` }])
     setActiveId(id)
     setActiveSection('TERMINAL')
   }
@@ -100,7 +97,7 @@ export function TerminalPanel({ onMaximize, onClose, isMaximized, markers = [], 
                 key={section}
                 onClick={() => setActiveSection(section)}
                 className={[
-                  'relative px-4 py-2 text-[11px] font-medium tracking-wide whitespace-nowrap transition-colors duration-100 border-r border-[#252526]',
+                  'relative px-4 py-1 text-[11px] font-medium tracking-wide whitespace-nowrap transition-colors duration-100 border-r border-[#252526]',
                   active
                     ? 'text-white bg-[#1e1e1e]'
                     : 'text-[#9d9d9d] bg-[#181818] hover:text-[#cccccc] hover:bg-[#1e1e1e]',
@@ -165,7 +162,7 @@ export function TerminalPanel({ onMaximize, onClose, isMaximized, markers = [], 
 
         {/* ── Right instance list ──────────────────────────────────────── */}
         {activeSection === 'TERMINAL' && (
-          <div className="w-[160px] shrink-0 bg-[#181818] border-l border-[#252526] flex flex-col overflow-y-auto">
+          <div className="w-[140px] shrink-0 bg-[#181818] border-l border-[#252526] flex flex-col overflow-y-auto">
             {instances.map(inst => {
               const isActive = activeId === inst.id
               const isHovered = hoveredId === inst.id
@@ -227,7 +224,7 @@ function ActionBtn({
     <button
       title={title}
       onClick={onClick}
-      className="flex items-center justify-center w-7 h-7 text-[#9d9d9d] hover:text-[#cccccc] hover:bg-[#2a2d2e] rounded transition-colors duration-100"
+      className="flex items-center justify-center w-6 h-6 text-[#9d9d9d] hover:text-[#cccccc] hover:bg-[#2a2d2e] rounded transition-colors duration-100"
     >
       {children}
     </button>
