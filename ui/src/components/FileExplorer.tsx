@@ -128,7 +128,7 @@ export function FileExplorer({
   const contextMenuRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const pathInputRef = useRef<HTMLInputElement>(null)
-  const isCommittingRef = useRef(false) // Prevents blur race on rename/create
+  const isCommittingRef = useRef(false)
 
   // Sync local tree with props
   useEffect(() => {
@@ -175,19 +175,16 @@ export function FileExplorer({
     }
   }, [createState?.isActive, renameState?.isActive])
 
-  // Build full path ensuring proper structure
   const buildFullPath = useCallback((parentPath: string | null, name: string): string => {
     if (!parentPath) return normalizePath(name)
     return normalizePath(`${parentPath}/${name}`)
   }, [])
 
-  // Load directory contents for lazy loading
   const loadDirectoryContents = useCallback(async (folderPath: string) => {
     try {
       const response = await fetch(
         `${config.apiEndpoint}/api/files?root=${encodeURIComponent(currentPath)}&path=${encodeURIComponent(folderPath)}`
       )
-
       if (response.ok) {
         const children = await response.json() as FileNode[] | null
         setLocalTree(prevTree => updateTreeWithChildren(prevTree, folderPath, children || []))
@@ -197,7 +194,6 @@ export function FileExplorer({
     }
   }, [currentPath])
 
-  // Update tree with loaded children
   const updateTreeWithChildren = (tree: FileNode[], folderPath: string, children: FileNode[]): FileNode[] => {
     return tree.map(node => updateNodeWithChildren(node, folderPath, children))
   }
@@ -206,23 +202,20 @@ export function FileExplorer({
     if (node.path === folderPath) {
       return {
         ...node,
-        children: children || [], // Handle null children by defaulting to empty array
+        children: children || [],
         loaded: true,
-        hasMore: children && children.length >= 100 // Assume more if we hit the limit
+        hasMore: children && children.length >= 100
       }
     }
-
     if (node.children) {
       return {
         ...node,
         children: node.children.map(child => updateNodeWithChildren(child, folderPath, children))
       }
     }
-
     return node
   }
 
-  // Toggle folder expansion with lazy loading
   const toggleFolder = useCallback(async (path: string) => {
     setExpandedFolders(prev => {
       const newSet = new Set(prev)
@@ -230,7 +223,6 @@ export function FileExplorer({
         newSet.delete(path)
       } else {
         newSet.add(path)
-        // Find the node to check if it has children or needs loading
         const findNode = (nodes: FileNode[]): FileNode | null => {
           for (const node of nodes) {
             if (node.path === path) return node
@@ -241,9 +233,7 @@ export function FileExplorer({
           }
           return null
         }
-
         const node = findNode(localTree)
-        // Only trigger folder expansion if it has children or hasn't been loaded
         if (node && (node.children && node.children.length > 0 || !node.loaded)) {
           expandFolder(path)
         }
@@ -252,12 +242,9 @@ export function FileExplorer({
     })
   }, [currentPath, localTree])
 
-  // Expand folder for lazy loading
   const expandFolder = useCallback(async (folderPath: string) => {
     try {
       await loadDirectoryContents(folderPath)
-
-      // Also expand for SSE watching
       await fetch(`${config.apiEndpoint}/api/expand?root=${encodeURIComponent(currentPath)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -268,7 +255,6 @@ export function FileExplorer({
     }
   }, [currentPath, loadDirectoryContents])
 
-  // API calls
   const apiCall = async (endpoint: string, method: string, body?: any) => {
     const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : '/' + endpoint
     const url = `${config.apiEndpoint}/api/files${normalizedEndpoint}?root=${encodeURIComponent(currentPath)}`
@@ -277,7 +263,6 @@ export function FileExplorer({
       headers: { 'Content-Type': 'application/json' },
       body: body ? JSON.stringify(body) : undefined
     })
-
     if (!response.ok) {
       const error = await response.text()
       throw new Error(`HTTP ${response.status}: ${error}`)
@@ -285,62 +270,46 @@ export function FileExplorer({
     return response
   }
 
-  // Create file/folder
   const createFileOrFolder = async (type: 'file' | 'folder', parentPath: string | null, name: string) => {
     try {
       const fullPath = buildFullPath(parentPath, name)
       await apiCall('', 'POST', { path: fullPath, type })
-
       setCreateState(null)
-      // SSE will handle the update automatically
     } catch (error) {
       console.error('Create error:', error)
       setErrorMsg(error instanceof Error ? error.message : 'Failed to create')
     }
   }
 
-  // Rename file/folder
   const renameFileOrFolder = async (node: FileNode, newName: string) => {
     try {
-      // Save file if dirty
       if (onCheckFileDirty?.(node.path) && onSaveFile) {
         await onSaveFile(node.path)
       }
-
       const parentPath = node.path.split('/').slice(0, -1).join('/') || ''
       const newPath = buildFullPath(parentPath, newName)
-
       await apiCall(`/${normalizePath(node.path)}`, 'PATCH', { newPath })
-
-      if (onFileRename) {
-        onFileRename(node.path, newPath)
-      }
-
+      if (onFileRename) onFileRename(node.path, newPath)
       setRenameState(null)
-      // SSE will handle the update automatically
     } catch (error) {
       console.error('Rename error:', error)
       setErrorMsg(error instanceof Error ? error.message : 'Failed to rename')
     }
   }
 
-  // Delete file/folder
   const deleteFileOrFolder = async (node: FileNode) => {
     try {
       await apiCall(`/${normalizePath(node.path)}`, 'DELETE')
       setDeleteNode(null)
-      // SSE will handle the update automatically
     } catch (error) {
       console.error('Delete error:', error)
       setErrorMsg(error instanceof Error ? error.message : 'Failed to delete')
     }
   }
 
-  // Context menu handlers
   const handleContextMenu = useCallback((e: React.MouseEvent, node: FileNode) => {
     e.preventDefault()
-    e.stopPropagation() // Prevent bubbling to tree container (which would set node: null)
-    // Clamp position to keep menu within viewport
+    e.stopPropagation()
     const menuWidth = 180
     const menuHeight = 200
     const x = Math.min(e.clientX, window.innerWidth - menuWidth)
@@ -391,27 +360,20 @@ export function FileExplorer({
 
   const handlePaste = useCallback(async (targetFolderNode: FileNode | null) => {
     if (!clipboard) return
-
     try {
-      // Determine destination folder
       let destFolder = ''
       if (targetFolderNode) {
         destFolder = targetFolderNode.type === 'folder'
           ? targetFolderNode.path
           : (targetFolderNode.path.split('/').slice(0, -1).join('/') || '')
       }
-
       const destPath = buildFullPath(destFolder, clipboard.name)
 
       if (clipboard.action === 'cut') {
-        // Move file using the rename PATCH API
         await apiCall(`/${normalizePath(clipboard.path)}`, 'PATCH', { newPath: destPath })
-        if (onFileRename) {
-          onFileRename(clipboard.path, destPath)
-        }
-        setClipboard(null) // Clear clipboard after cut
+        if (onFileRename) onFileRename(clipboard.path, destPath)
+        setClipboard(null)
       } else {
-        // Copy: use raw fetch because apiCall prefixes /api/files, but copy endpoint is /api/copy
         const response = await fetch(
           `${config.apiEndpoint}/api/copy?root=${encodeURIComponent(currentPath)}`,
           {
@@ -425,7 +387,6 @@ export function FileExplorer({
           throw new Error(`HTTP ${response.status}: ${err}`)
         }
       }
-
       setContextMenu(null)
     } catch (error) {
       console.error('Paste error:', error)
@@ -433,7 +394,6 @@ export function FileExplorer({
     }
   }, [clipboard, buildFullPath, onFileRename])
 
-  // Sort nodes: folders first, then files, both alphabetical
   const sortNodes = useCallback((nodes: FileNode[]): FileNode[] => {
     return [...nodes].sort((a, b) => {
       if (a.type === 'folder' && b.type !== 'folder') return -1
@@ -442,22 +402,28 @@ export function FileExplorer({
     })
   }, [])
 
-  // Copy path to clipboard
   const copyPath = useCallback((path: string) => {
     navigator.clipboard.writeText(path).catch(() => { })
     setContextMenu(null)
   }, [])
 
-  // Render tree recursively
+  // The path of whichever node the context menu is currently open for.
+  // Used to draw the selection highlight that persists until menu is dismissed.
+  const contextMenuNodePath = contextMenu?.node?.path ?? null
+
   const renderTree = useCallback((nodes: FileNode[], depth = 0) => {
     const sorted = sortNodes(nodes)
     return sorted.map(node => {
       const isExpanded = expandedFolders.has(node.path)
-      const hasChildren = node.children && node.children.length > 0
       const isCreating = createState?.isActive && createState.parentPath === node.path
       const isRenaming = renameState?.isActive && renameState.node.path === node.path
       const isActiveFile = node.type === 'file' && node.path === activeFilePath
       const isCut = clipboard?.action === 'cut' && clipboard.path === node.path
+
+      // Right-click selection: highlight the node the context menu was opened on,
+      // using a slightly lighter tint than the active-file highlight so they're
+      // visually distinct but clearly in the same "selection" family.
+      const isContextSelected = node.path === contextMenuNodePath
 
       return (
         <div key={node.path} style={{ opacity: isCut ? 0.4 : 1 }}>
@@ -465,9 +431,12 @@ export function FileExplorer({
             className={cn(
               'flex items-center relative cursor-pointer text-[13px] select-none',
               'h-[22px]',
+              // Priority: active file > context-menu selection > hover
               isActiveFile
                 ? 'bg-[#094771]'
-                : 'hover:bg-[#2a2d2e]',
+                : isContextSelected
+                  ? 'bg-[#37373d]'          // VS Code's right-click selection colour
+                  : 'hover:bg-[#2a2d2e]',
             )}
             style={{ paddingLeft: `${8 + depth * 16}px` }}
             onContextMenu={(e) => handleContextMenu(e, node)}
@@ -491,6 +460,11 @@ export function FileExplorer({
             {/* Active file left border */}
             {isActiveFile && (
               <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#007acc]" />
+            )}
+
+            {/* Right-click selection border — dashed to distinguish from active-file solid */}
+            {isContextSelected && !isActiveFile && (
+              <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#007acc] opacity-60" />
             )}
 
             {node.type === 'folder' ? (
@@ -519,9 +493,7 @@ export function FileExplorer({
                 value={renameState.newName}
                 onChange={(e) => setRenameState(prev => prev ? { ...prev, newName: e.target.value } : null)}
                 onBlur={() => {
-                  if (!isCommittingRef.current) {
-                    setRenameState(null)
-                  }
+                  if (!isCommittingRef.current) setRenameState(null)
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && renameState.newName.trim()) {
@@ -547,7 +519,6 @@ export function FileExplorer({
           {/* Create new file/folder input (inline VS Code style) */}
           {isCreating && (
             <div className="relative h-[22px] flex items-center" style={{ paddingLeft: `${8 + (depth + 1) * 16}px` }}>
-              {/* Indent guides for create row */}
               {Array.from({ length: depth + 1 }, (_, i) => (
                 <div
                   key={i}
@@ -569,9 +540,7 @@ export function FileExplorer({
                 value={createState.name}
                 onChange={(e) => setCreateState(prev => prev ? { ...prev, name: e.target.value } : null)}
                 onBlur={() => {
-                  if (!isCommittingRef.current) {
-                    setCreateState(null)
-                  }
+                  if (!isCommittingRef.current) setCreateState(null)
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && createState.name.trim()) {
@@ -595,7 +564,10 @@ export function FileExplorer({
               {node.children.length > 0 ? (
                 renderTree(node.children, depth + 1)
               ) : (
-                <div className="text-[#858585] text-xs italic h-[22px] flex items-center" style={{ paddingLeft: `${8 + (depth + 1) * 16}px` }}>
+                <div
+                  className="text-[#858585] text-xs italic h-[22px] flex items-center"
+                  style={{ paddingLeft: `${8 + (depth + 1) * 16}px` }}
+                >
                   Empty folder
                 </div>
               )}
@@ -614,12 +586,13 @@ export function FileExplorer({
     handleContextMenu,
     activeFilePath,
     sortNodes,
-    clipboard
+    clipboard,
+    contextMenuNodePath,   // re-render when context-menu target changes
   ])
 
   return (
     <div ref={explorerRef} className={cn('bg-[#252526] flex flex-col h-full', className)}>
-      {/* Header — action icons appear on hover like VS Code */}
+      {/* Header */}
       <div className="h-[35px] border-b border-[#3c3c3c] bg-[#252526] flex items-center justify-between px-4 flex-shrink-0 group/header">
         {!isMinimized && (
           <span className="text-[11px] font-semibold tracking-wider text-[#bbbbbb] uppercase select-none">Explorer</span>
@@ -709,9 +682,7 @@ export function FileExplorer({
                         value={createState.name}
                         onChange={(e) => setCreateState(prev => prev ? { ...prev, name: e.target.value } : null)}
                         onBlur={() => {
-                          if (!isCommittingRef.current) {
-                            setCreateState(null)
-                          }
+                          if (!isCommittingRef.current) setCreateState(null)
                         }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && createState.name.trim()) {
@@ -735,14 +706,13 @@ export function FileExplorer({
         </div>
       )}
 
-      {/* Context menu — closes only on outside click so buttons can fire */}
+      {/* Context menu */}
       {contextMenu && (
         <div
           ref={contextMenuRef}
           className="fixed z-50 bg-[#252526] border border-[#454545] shadow-lg py-1 min-w-[200px]"
           style={{ left: contextMenu.x, top: contextMenu.y }}
         >
-          {/* Node-specific actions */}
           {contextMenu.node && (
             <>
               <button
@@ -781,7 +751,6 @@ export function FileExplorer({
             </>
           )}
 
-          {/* Paste action (available everywhere if clipboard has item) */}
           <button
             className={cn(
               "flex items-center px-6 py-[4px] text-[13px] w-full text-left",
@@ -789,16 +758,13 @@ export function FileExplorer({
                 ? "text-[#cccccc] hover:bg-[#094771] hover:text-white"
                 : "text-[#555555] cursor-not-allowed"
             )}
-            onClick={() => {
-              if (clipboard) handlePaste(contextMenu.node)
-            }}
+            onClick={() => { if (clipboard) handlePaste(contextMenu.node) }}
             disabled={!clipboard}
           >
             Paste
           </button>
           <div className="border-t border-[#454545] my-1" />
 
-          {/* Create actions */}
           <button
             className="flex items-center px-6 py-[4px] text-[13px] text-[#cccccc] hover:bg-[#094771] hover:text-white w-full text-left"
             onClick={() => handleCreate('file', contextMenu.node?.type === 'folder' ? contextMenu.node.path : null)}
@@ -843,5 +809,4 @@ export function FileExplorer({
   )
 }
 
-// Ensure this is the default export
 export default FileExplorer
