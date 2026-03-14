@@ -467,7 +467,7 @@ export function HomeContent() {
 
         {/* Status Bar */}
         {config.showEditor && (
-          <div className="h-[22px] bg-[#007acc] flex items-center justify-between px-3 text-xs text-white flex-shrink-0 select-none">
+          <div className="h-[18px] bg-[#007acc] flex items-center justify-between px-3 text-xs text-white flex-shrink-0 select-none">
             <div className="flex items-center gap-3">
               {activeTab && (
                 <>
