@@ -311,6 +311,7 @@ export function FileExplorer({
       const fullPath = buildFullPath(parentPath, name)
       await apiCall('', 'POST', { path: fullPath, type })
       setCreateState(null)
+      onRefresh?.()
     } catch (error) {
       console.error('Create error:', error)
       setErrorMsg(error instanceof Error ? error.message : 'Failed to create')
@@ -327,6 +328,7 @@ export function FileExplorer({
       await apiCall(`/${normalizePath(node.path)}`, 'PATCH', { newPath })
       if (onFileRename) onFileRename(node.path, newPath)
       setRenameState(null)
+      onRefresh?.()
     } catch (error) {
       console.error('Rename error:', error)
       setErrorMsg(error instanceof Error ? error.message : 'Failed to rename')
@@ -337,6 +339,7 @@ export function FileExplorer({
     try {
       await apiCall(`/${normalizePath(node.path)}`, 'DELETE')
       setDeleteNode(null)
+      onRefresh?.()
     } catch (error) {
       console.error('Delete error:', error)
       setErrorMsg(error instanceof Error ? error.message : 'Failed to delete')
@@ -424,11 +427,12 @@ export function FileExplorer({
         }
       }
       setContextMenu(null)
+      onRefresh?.()
     } catch (error) {
       console.error('Paste error:', error)
       setErrorMsg(error instanceof Error ? error.message : 'Failed to paste')
     }
-  }, [clipboard, buildFullPath, onFileRename])
+  }, [clipboard, buildFullPath, onFileRename, onRefresh])
 
   const sortNodes = useCallback((nodes: FileNode[]): FileNode[] => {
     return [...nodes].sort((a, b) => {

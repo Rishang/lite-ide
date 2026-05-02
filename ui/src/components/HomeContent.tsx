@@ -19,6 +19,7 @@ import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { config } from "@/utils/config";
 import { getLanguageFromPath, getThemeForLanguage } from "@/lib/common";
+import { normalizePath } from "@/lib/utils";
 
 const TerminalPanel = dynamic(
   () =>
@@ -232,11 +233,12 @@ export function HomeContent() {
   };
 
   const openFile = async (path: string, line?: number, column?: number) => {
+    const tabPath = normalizePath(path);
     try {
       if (line) {
-        setSearchTarget({ path, line, column: column || 1 });
+        setSearchTarget({ path: tabPath, line, column: column || 1 });
       }
-      const normalizedPath = path.startsWith("/") ? path : "/" + path;
+      const normalizedPath = "/" + tabPath;
       const response = await fetch(
         `${config.apiEndpoint}/api/files${normalizedPath}?root=${encodeURIComponent(currentPath)}`,
       );
@@ -244,9 +246,9 @@ export function HomeContent() {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       const content = await response.text();
       const newTabs = new Map(tabs);
-      newTabs.set(path, { content, dirty: false });
+      newTabs.set(tabPath, { content, dirty: false });
       setTabs(newTabs);
-      setActiveTab(path);
+      setActiveTab(tabPath);
     } catch (error) {
       console.error("Failed to open file:", error);
     }
@@ -357,12 +359,12 @@ export function HomeContent() {
 
   const refreshReplacedTabs = async (paths: string[]) => {
     if (paths.length === 0) return;
-    const openPaths = paths.filter((path) => tabs.has(path));
+    const openPaths = paths.map(normalizePath).filter((path) => tabs.has(path));
     if (openPaths.length > 0) {
       const newTabs = new Map(tabs);
       await Promise.all(
         openPaths.map(async (path) => {
-          const normalizedPath = path.startsWith("/") ? path : "/" + path;
+          const normalizedPath = "/" + path;
           const response = await fetch(
             `${config.apiEndpoint}/api/files${normalizedPath}?root=${encodeURIComponent(currentPath)}`,
           );

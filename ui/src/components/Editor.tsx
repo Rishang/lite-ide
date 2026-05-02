@@ -29,6 +29,8 @@ interface EditorProps {
 
 export function Editor({ content, path, language, theme = 'atom-one-dark', targetLine, targetColumn, onChange, onSave, onMarkersChange }: EditorProps) {
   const editorRef = useRef<any>(null)
+  const markerDisposableRef = useRef<{ dispose: () => void } | null>(null)
+  const markerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const onMarkersChangeRef = useRef(onMarkersChange)
   onMarkersChangeRef.current = onMarkersChange
 
@@ -66,6 +68,17 @@ export function Editor({ content, path, language, theme = 'atom-one-dark', targe
     editorRef.current.focus()
   }, [path, targetLine, targetColumn])
 
+  useEffect(() => {
+    return () => {
+      markerDisposableRef.current?.dispose()
+      markerDisposableRef.current = null
+      if (markerTimeoutRef.current) {
+        clearTimeout(markerTimeoutRef.current)
+        markerTimeoutRef.current = null
+      }
+    }
+  }, [])
+
   return (
     <div className="h-full w-full min-h-0 min-w-0 flex-1 bg-[#1f2329]">
       <Suspense fallback={<LoadingScreen />}>
@@ -77,6 +90,7 @@ export function Editor({ content, path, language, theme = 'atom-one-dark', targe
             onChange={(value: string) => onChange(value || '')}
             onMount={(editor: any, monaco: any) => {
               editorRef.current = editor
+              markerDisposableRef.current?.dispose()
 
               // Emit markers (diagnostics) whenever they change for this model
               const emitMarkers = () => {
@@ -89,10 +103,12 @@ export function Editor({ content, path, language, theme = 'atom-one-dark', targe
               // Listen for model marker changes on the editor
               const disposable = editor.onDidChangeModelDecorations(() => {
                 // Markers update slightly after decorations; defer one tick
-                setTimeout(emitMarkers, 0)
+                if (markerTimeoutRef.current) clearTimeout(markerTimeoutRef.current)
+                markerTimeoutRef.current = setTimeout(emitMarkers, 0)
               })
 
-              editor._markerDisposable = disposable
+              markerDisposableRef.current = disposable
+              emitMarkers()
             }}
             options={{
               minimap: {
