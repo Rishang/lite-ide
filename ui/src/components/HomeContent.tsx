@@ -309,7 +309,7 @@ export function HomeContent() {
       } finally {
         autosaveInFlightRef.current.delete(path);
       }
-    }, 2000);
+    }, 1000);
 
     return () => window.clearInterval(interval);
   }, [activeTab, currentPath]);
