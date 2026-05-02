@@ -9,61 +9,97 @@ import {
   ChevronRight,
   ChevronDown,
   ChevronLeft,
-  Code,
-  FileText,
-  Database,
-  Image,
-  Archive,
   FilePlus,
   FolderPlus,
-  Trash2,
-  Edit2,
   RotateCcw
 } from 'lucide-react'
 import { cn, normalizePath } from '@/lib/utils'
 import { config } from '@/utils/config'
 
-// Static file icon mapping (outside component to avoid re-creation)
-const FILE_ICON_MAP: Record<string, { Icon: React.FC<any>; colorClass: string }> = {
-  'js': { Icon: Code, colorClass: 'text-yellow-400' },
-  'jsx': { Icon: Code, colorClass: 'text-yellow-400' },
-  'ts': { Icon: Code, colorClass: 'text-blue-400' },
-  'tsx': { Icon: Code, colorClass: 'text-blue-400' },
-  'py': { Icon: Code, colorClass: 'text-green-400' },
-  'go': { Icon: Code, colorClass: 'text-cyan-400' },
-  'rs': { Icon: Code, colorClass: 'text-orange-500' },
-  'java': { Icon: Code, colorClass: 'text-orange-400' },
-  'cpp': { Icon: Code, colorClass: 'text-blue-500' },
-  'c': { Icon: Code, colorClass: 'text-blue-500' },
-  'php': { Icon: Code, colorClass: 'text-purple-400' },
-  'rb': { Icon: Code, colorClass: 'text-red-400' },
-  'html': { Icon: FileText, colorClass: 'text-orange-400' },
-  'css': { Icon: FileText, colorClass: 'text-purple-400' },
-  'json': { Icon: Database, colorClass: 'text-yellow-500' },
-  'md': { Icon: FileText, colorClass: 'text-blue-300' },
-  'xml': { Icon: FileText, colorClass: 'text-orange-300' },
-  'yaml': { Icon: FileText, colorClass: 'text-red-300' },
-  'yml': { Icon: FileText, colorClass: 'text-red-300' },
-  'png': { Icon: Image, colorClass: 'text-green-300' },
-  'jpg': { Icon: Image, colorClass: 'text-green-300' },
-  'jpeg': { Icon: Image, colorClass: 'text-green-300' },
-  'gif': { Icon: Image, colorClass: 'text-green-300' },
-  'svg': { Icon: Image, colorClass: 'text-green-300' },
-  'zip': { Icon: Archive, colorClass: 'text-orange-300' },
-  'tar': { Icon: Archive, colorClass: 'text-orange-300' },
-  'gz': { Icon: Archive, colorClass: 'text-orange-300' },
-  'sh': { Icon: FileText, colorClass: 'text-green-300' },
-  'sql': { Icon: Database, colorClass: 'text-blue-300' },
+interface FileIconThemeEntry {
+  label: string
+  bg: string
+  text: string
+}
+
+// Atom One Dark inspired file icon theme. Shared by explorer, tabs, and search.
+const FILE_ICON_MAP: Record<string, FileIconThemeEntry> = {
+  js: { label: 'JS', bg: '#e5c07b22', text: '#e5c07b' },
+  mjs: { label: 'JS', bg: '#e5c07b22', text: '#e5c07b' },
+  cjs: { label: 'JS', bg: '#e5c07b22', text: '#e5c07b' },
+  jsx: { label: 'RJ', bg: '#61afef22', text: '#61afef' },
+  ts: { label: 'TS', bg: '#61afef22', text: '#61afef' },
+  mts: { label: 'TS', bg: '#61afef22', text: '#61afef' },
+  cts: { label: 'TS', bg: '#61afef22', text: '#61afef' },
+  tsx: { label: 'RX', bg: '#56b6c222', text: '#56b6c2' },
+  py: { label: 'PY', bg: '#98c37922', text: '#98c379' },
+  pyi: { label: 'PY', bg: '#98c37922', text: '#98c379' },
+  pyw: { label: 'PY', bg: '#98c37922', text: '#98c379' },
+  go: { label: 'GO', bg: '#56b6c222', text: '#56b6c2' },
+  rs: { label: 'RS', bg: '#d19a6622', text: '#d19a66' },
+  rb: { label: 'RB', bg: '#e06c7522', text: '#e06c75' },
+  rake: { label: 'RB', bg: '#e06c7522', text: '#e06c75' },
+  gemspec: { label: 'RB', bg: '#e06c7522', text: '#e06c75' },
+  svelte: { label: 'SV', bg: '#e06c7522', text: '#e06c75' },
+  html: { label: '<>', bg: '#d19a6622', text: '#d19a66' },
+  htm: { label: '<>', bg: '#d19a6622', text: '#d19a66' },
+  css: { label: '#', bg: '#61afef22', text: '#61afef' },
+  scss: { label: 'SC', bg: '#c678dd22', text: '#c678dd' },
+  sass: { label: 'SA', bg: '#c678dd22', text: '#c678dd' },
+  json: { label: '{}', bg: '#e5c07b22', text: '#e5c07b' },
+  yaml: { label: 'Y', bg: '#c678dd22', text: '#c678dd' },
+  yml: { label: 'Y', bg: '#c678dd22', text: '#c678dd' },
+  md: { label: 'MD', bg: '#abb2bf22', text: '#abb2bf' },
+  markdown: { label: 'MD', bg: '#abb2bf22', text: '#abb2bf' },
+  dockerfile: { label: 'DK', bg: '#61afef22', text: '#61afef' },
+  sh: { label: '$', bg: '#98c37922', text: '#98c379' },
+  bash: { label: '$', bg: '#98c37922', text: '#98c379' },
+  zsh: { label: '$', bg: '#98c37922', text: '#98c379' },
+  sql: { label: 'DB', bg: '#56b6c222', text: '#56b6c2' },
+  xml: { label: '<>', bg: '#d19a6622', text: '#d19a66' },
+  svg: { label: 'SVG', bg: '#d19a6622', text: '#d19a66' },
+  png: { label: 'IMG', bg: '#98c37922', text: '#98c379' },
+  jpg: { label: 'IMG', bg: '#98c37922', text: '#98c379' },
+  jpeg: { label: 'IMG', bg: '#98c37922', text: '#98c379' },
+  gif: { label: 'GIF', bg: '#98c37922', text: '#98c379' },
+  webp: { label: 'IMG', bg: '#98c37922', text: '#98c379' },
+  zip: { label: 'ZIP', bg: '#d19a6622', text: '#d19a66' },
+  tar: { label: 'TAR', bg: '#d19a6622', text: '#d19a66' },
+  gz: { label: 'GZ', bg: '#d19a6622', text: '#d19a66' },
+}
+
+const FILE_NAME_ICON_MAP: Record<string, FileIconThemeEntry> = {
+  dockerfile: FILE_ICON_MAP.dockerfile,
+  containerfile: FILE_ICON_MAP.dockerfile,
+  'go.mod': { label: 'GO', bg: '#56b6c222', text: '#56b6c2' },
+  'go.sum': { label: 'GO', bg: '#56b6c222', text: '#56b6c2' },
+  'go.work': { label: 'GO', bg: '#56b6c222', text: '#56b6c2' },
+  gemfile: { label: 'RB', bg: '#e06c7522', text: '#e06c75' },
+  rakefile: { label: 'RB', bg: '#e06c7522', text: '#e06c75' },
+  'package.json': { label: '{}', bg: '#e5c07b22', text: '#e5c07b' },
+  'tsconfig.json': { label: 'TS', bg: '#61afef22', text: '#61afef' },
 }
 
 function getFileIcon(fileName: string) {
+  const lowerName = fileName.toLowerCase()
+  const nameEntry = FILE_NAME_ICON_MAP[lowerName] || (
+    lowerName.startsWith('dockerfile.') || lowerName.startsWith('containerfile.')
+      ? FILE_ICON_MAP.dockerfile
+      : undefined
+  )
   const ext = fileName.split('.').pop()?.toLowerCase() || ''
-  const entry = FILE_ICON_MAP[ext]
-  if (entry) {
-    const { Icon, colorClass } = entry
-    return <Icon className={`w-4 h-4 ${colorClass}`} />
-  }
-  return <File className="w-4 h-4 text-gray-400" />
+  const entry = nameEntry || FILE_ICON_MAP[ext]
+  if (!entry) return <File className="w-4 h-4 text-[#5c6370]" />
+
+  return (
+    <span
+      className="inline-flex h-4 min-w-4 items-center justify-center rounded-[3px] px-[3px] text-[8px] font-bold leading-none"
+      style={{ backgroundColor: entry.bg, color: entry.text }}
+      aria-hidden="true"
+    >
+      {entry.label}
+    </span>
+  )
 }
 
 // Exported for reuse in TabBar
@@ -407,6 +443,10 @@ export function FileExplorer({
     setContextMenu(null)
   }, [])
 
+  const contextMenuItemClass = 'flex h-[26px] w-full items-center px-6 text-left text-[13px] text-[#abb2bf] outline-none transition-colors hover:bg-[#343b47] hover:text-white focus:bg-[#343b47] focus:text-white'
+  const contextMenuDisabledItemClass = 'flex h-[26px] w-full items-center px-6 text-left text-[13px] text-[#5c6370] cursor-not-allowed'
+  const contextMenuSeparatorClass = 'my-1 h-px bg-[#111318]'
+
   // The path of whichever node the context menu is currently open for.
   // Used to draw the selection highlight that persists until menu is dismissed.
   const contextMenuNodePath = contextMenu?.node?.path ?? null
@@ -433,10 +473,10 @@ export function FileExplorer({
               'h-[22px]',
               // Priority: active file > context-menu selection > hover
               isActiveFile
-                ? 'bg-[#094771]'
+                ? 'bg-[#343b47]'
                 : isContextSelected
-                  ? 'bg-[#37373d]'          // VS Code's right-click selection colour
-                  : 'hover:bg-[#2a2d2e]',
+                  ? 'bg-[#252a32]'          // VS Code's right-click selection colour
+                  : 'hover:bg-[#252a32]',
             )}
             style={{ paddingLeft: `${8 + depth * 16}px` }}
             onContextMenu={(e) => handleContextMenu(e, node)}
@@ -452,31 +492,31 @@ export function FileExplorer({
             {Array.from({ length: depth }, (_, i) => (
               <div
                 key={i}
-                className="absolute top-0 bottom-0 w-px bg-[#404040]"
+                className="absolute top-0 bottom-0 w-px bg-[#303641]"
                 style={{ left: `${16 + i * 16}px` }}
               />
             ))}
 
             {/* Active file left border */}
             {isActiveFile && (
-              <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#007acc]" />
+              <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#61afef]" />
             )}
 
             {/* Right-click selection border — dashed to distinguish from active-file solid */}
             {isContextSelected && !isActiveFile && (
-              <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#007acc] opacity-60" />
+              <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#61afef] opacity-60" />
             )}
 
             {node.type === 'folder' ? (
               <>
                 {isExpanded ? (
-                  <ChevronDown className="w-4 h-4 mr-1 text-[#cccccc] flex-shrink-0" />
+                  <ChevronDown className="w-4 h-4 mr-1 text-[#abb2bf] flex-shrink-0" />
                 ) : (
-                  <ChevronRight className="w-4 h-4 mr-1 text-[#cccccc] flex-shrink-0" />
+                  <ChevronRight className="w-4 h-4 mr-1 text-[#abb2bf] flex-shrink-0" />
                 )}
                 <Folder className={cn(
                   'w-4 h-4 mr-2 flex-shrink-0',
-                  isExpanded ? 'text-[#c09553]' : 'text-[#90a4ae]'
+                  isExpanded ? 'text-[#e5c07b]' : 'text-[#61afef]'
                 )} />
               </>
             ) : (
@@ -505,13 +545,13 @@ export function FileExplorer({
                     setRenameState(null)
                   }
                 }}
-                className="flex-1 bg-[#3c3c3c] text-[#cccccc] border border-[#007acc] outline-none px-1 text-[13px] min-w-0"
+                className="flex-1 bg-[#303641] text-[#abb2bf] border border-[#61afef] outline-none px-1 text-[13px] min-w-0"
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
               <span className={cn(
                 'truncate flex-1',
-                isActiveFile ? 'text-white' : 'text-[#cccccc]'
+                isActiveFile ? 'text-white' : 'text-[#abb2bf]'
               )}>{node.name}</span>
             )}
           </div>
@@ -522,12 +562,12 @@ export function FileExplorer({
               {Array.from({ length: depth + 1 }, (_, i) => (
                 <div
                   key={i}
-                  className="absolute top-0 bottom-0 w-px bg-[#404040]"
+                  className="absolute top-0 bottom-0 w-px bg-[#303641]"
                   style={{ left: `${16 + i * 16}px` }}
                 />
               ))}
               {createState.type === 'folder' ? (
-                <Folder className="w-4 h-4 mr-2 text-[#c09553] flex-shrink-0" />
+                <Folder className="w-4 h-4 mr-2 text-[#e5c07b] flex-shrink-0" />
               ) : (
                 <>
                   <span className="w-4 mr-1 flex-shrink-0" />
@@ -552,7 +592,7 @@ export function FileExplorer({
                   }
                 }}
                 placeholder={createState.type === 'file' ? 'File name' : 'Folder name'}
-                className="flex-1 bg-[#3c3c3c] text-[#cccccc] border border-[#007acc] outline-none px-1 py-0 text-[13px] min-w-0"
+                className="flex-1 bg-[#303641] text-[#abb2bf] border border-[#61afef] outline-none px-1 py-0 text-[13px] min-w-0"
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
@@ -565,7 +605,7 @@ export function FileExplorer({
                 renderTree(node.children, depth + 1)
               ) : (
                 <div
-                  className="text-[#858585] text-xs italic h-[22px] flex items-center"
+                  className="text-[#5c6370] text-xs italic h-[22px] flex items-center"
                   style={{ paddingLeft: `${8 + (depth + 1) * 16}px` }}
                 >
                   Empty folder
@@ -591,48 +631,48 @@ export function FileExplorer({
   ])
 
   return (
-    <div ref={explorerRef} className={cn('bg-[#252526] flex flex-col h-full', className)}>
+    <div ref={explorerRef} className={cn('bg-[#191d23] flex flex-col h-full', className)}>
       {/* Header */}
-      <div className="h-[35px] border-b border-[#3c3c3c] bg-[#252526] flex items-center justify-between px-4 flex-shrink-0 group/header">
+      <div className="h-[35px] border-b border-[#303641] bg-[#191d23] flex items-center justify-between px-4 flex-shrink-0 group/header">
         {!isMinimized && (
-          <span className="text-[11px] font-semibold tracking-wider text-[#bbbbbb] uppercase select-none">Explorer</span>
+          <span className="text-[11px] font-semibold tracking-wider text-[#abb2bf] uppercase select-none">Explorer</span>
         )}
         <div className="flex gap-0.5 opacity-0 group-hover/header:opacity-100 transition-opacity">
           {!isMinimized && (
             <>
               <button
                 title="Refresh Explorer"
-                className="p-1 hover:bg-[#3c3c3c] rounded transition-colors"
+                className="p-1 hover:bg-[#303641] rounded transition-colors"
                 onClick={() => onRefresh && onRefresh()}
               >
-                <RotateCcw className="w-3.5 h-3.5 text-[#cccccc]" />
+                <RotateCcw className="w-3.5 h-3.5 text-[#abb2bf]" />
               </button>
               <button
                 title="New File"
-                className="p-1 hover:bg-[#3c3c3c] rounded transition-colors"
+                className="p-1 hover:bg-[#303641] rounded transition-colors"
                 onClick={() => handleCreate('file', null)}
               >
-                <FilePlus className="w-3.5 h-3.5 text-[#cccccc]" />
+                <FilePlus className="w-3.5 h-3.5 text-[#abb2bf]" />
               </button>
               <button
                 title="New Folder"
-                className="p-1 hover:bg-[#3c3c3c] rounded transition-colors"
+                className="p-1 hover:bg-[#303641] rounded transition-colors"
                 onClick={() => handleCreate('folder', null)}
               >
-                <FolderPlus className="w-3.5 h-3.5 text-[#cccccc]" />
+                <FolderPlus className="w-3.5 h-3.5 text-[#abb2bf]" />
               </button>
             </>
           )}
           {onMinimize && showMinimizeButton && (
             <button
               title={isMinimized ? "Expand Explorer" : "Minimize Explorer"}
-              className="p-1 hover:bg-[#3c3c3c] rounded transition-colors"
+              className="p-1 hover:bg-[#303641] rounded transition-colors"
               onClick={onMinimize}
             >
               {isMinimized ? (
-                <ChevronRight className="w-4 h-4 text-[#cccccc]" />
+                <ChevronRight className="w-4 h-4 text-[#abb2bf]" />
               ) : (
-                <ChevronLeft className="w-4 h-4 text-[#cccccc]" />
+                <ChevronLeft className="w-4 h-4 text-[#abb2bf]" />
               )}
             </button>
           )}
@@ -661,7 +701,7 @@ export function FileExplorer({
         >
           <div className="py-1">
             {localTree.length === 0 ? (
-              <div className="text-center text-[#858585] text-[13px] py-8">
+              <div className="text-center text-[#5c6370] text-[13px] py-8">
                 No files or folders
               </div>
             ) : (
@@ -672,7 +712,7 @@ export function FileExplorer({
                   <div className="px-2 py-[2px]">
                     <div className="flex items-center">
                       {createState.type === 'folder' ? (
-                        <Folder className="w-4 h-4 mr-2 text-[#c09553] flex-shrink-0" />
+                        <Folder className="w-4 h-4 mr-2 text-[#e5c07b] flex-shrink-0" />
                       ) : (
                         <File className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" />
                       )}
@@ -694,7 +734,7 @@ export function FileExplorer({
                           }
                         }}
                         placeholder={createState.type === 'file' ? 'File name' : 'Folder name'}
-                        className="flex-1 bg-[#3c3c3c] text-[#cccccc] border border-[#007acc] outline-none px-1 py-0 text-[13px] min-w-0"
+                        className="flex-1 bg-[#303641] text-[#abb2bf] border border-[#61afef] outline-none px-1 py-0 text-[13px] min-w-0"
                         onClick={(e) => e.stopPropagation()}
                       />
                     </div>
@@ -710,72 +750,67 @@ export function FileExplorer({
       {contextMenu && (
         <div
           ref={contextMenuRef}
-          className="fixed z-50 bg-[#252526] border border-[#454545] shadow-lg py-1 min-w-[200px]"
+          className="fixed z-50 min-w-[210px] overflow-hidden border border-[#111318] bg-[#191d23] py-1 shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
           style={{ left: contextMenu.x, top: contextMenu.y }}
         >
-          {contextMenu.node && (
-            <>
-              <button
-                className="flex items-center px-6 py-[4px] text-[13px] text-[#cccccc] hover:bg-[#094771] hover:text-white w-full text-left"
-                onClick={() => handleRename(contextMenu.node!)}
-              >
-                Rename
-              </button>
-              <button
-                className="flex items-center px-6 py-[4px] text-[13px] text-[#cccccc] hover:bg-[#094771] hover:text-white w-full text-left"
-                onClick={() => handleDelete(contextMenu.node!)}
-              >
-                Delete
-              </button>
-              <div className="border-t border-[#454545] my-1" />
-              <button
-                className="flex items-center px-6 py-[4px] text-[13px] text-[#cccccc] hover:bg-[#094771] hover:text-white w-full text-left"
-                onClick={() => handleCut(contextMenu.node!)}
-              >
-                Cut
-              </button>
-              <button
-                className="flex items-center px-6 py-[4px] text-[13px] text-[#cccccc] hover:bg-[#094771] hover:text-white w-full text-left"
-                onClick={() => handleCopy(contextMenu.node!)}
-              >
-                Copy
-              </button>
-              <div className="border-t border-[#454545] my-1" />
-              <button
-                className="flex items-center px-6 py-[4px] text-[13px] text-[#cccccc] hover:bg-[#094771] hover:text-white w-full text-left"
-                onClick={() => copyPath(contextMenu.node!.path)}
-              >
-                Copy Path
-              </button>
-              <div className="border-t border-[#454545] my-1" />
-            </>
-          )}
-
           <button
-            className={cn(
-              "flex items-center px-6 py-[4px] text-[13px] w-full text-left",
-              clipboard
-                ? "text-[#cccccc] hover:bg-[#094771] hover:text-white"
-                : "text-[#555555] cursor-not-allowed"
-            )}
-            onClick={() => { if (clipboard) handlePaste(contextMenu.node) }}
-            disabled={!clipboard}
-          >
-            Paste
-          </button>
-          <div className="border-t border-[#454545] my-1" />
-
-          <button
-            className="flex items-center px-6 py-[4px] text-[13px] text-[#cccccc] hover:bg-[#094771] hover:text-white w-full text-left"
+            className={contextMenuItemClass}
             onClick={() => handleCreate('file', contextMenu.node?.type === 'folder' ? contextMenu.node.path : null)}
           >
             New File
           </button>
           <button
-            className="flex items-center px-6 py-[4px] text-[13px] text-[#cccccc] hover:bg-[#094771] hover:text-white w-full text-left"
+            className={contextMenuItemClass}
             onClick={() => handleCreate('folder', contextMenu.node?.type === 'folder' ? contextMenu.node.path : null)}
           >
             New Folder
+          </button>
+          <div className={contextMenuSeparatorClass} />
+
+          {contextMenu.node && (
+            <>
+              <button
+                className={contextMenuItemClass}
+                onClick={() => handleRename(contextMenu.node!)}
+              >
+                Rename
+              </button>
+              <button
+                className={contextMenuItemClass}
+                onClick={() => handleDelete(contextMenu.node!)}
+              >
+                Delete
+              </button>
+              <div className={contextMenuSeparatorClass} />
+              <button
+                className={contextMenuItemClass}
+                onClick={() => handleCut(contextMenu.node!)}
+              >
+                Cut
+              </button>
+              <button
+                className={contextMenuItemClass}
+                onClick={() => handleCopy(contextMenu.node!)}
+              >
+                Copy
+              </button>
+              <div className={contextMenuSeparatorClass} />
+              <button
+                className={contextMenuItemClass}
+                onClick={() => copyPath(contextMenu.node!.path)}
+              >
+                Copy Path
+              </button>
+              <div className={contextMenuSeparatorClass} />
+            </>
+          )}
+
+          <button
+            className={clipboard ? contextMenuItemClass : contextMenuDisabledItemClass}
+            onClick={() => { if (clipboard) handlePaste(contextMenu.node) }}
+            disabled={!clipboard}
+          >
+            Paste
           </button>
         </div>
       )}
@@ -783,20 +818,20 @@ export function FileExplorer({
       {/* Delete confirmation */}
       {deleteNode && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-[#252526] p-6 rounded border border-[#3c3c3c] shadow-xl max-w-md">
-            <h3 className="text-[#cccccc] text-base mb-2">Delete {deleteNode.type}</h3>
-            <p className="text-[#969696] text-sm mb-4">
+          <div className="bg-[#191d23] p-6 rounded border border-[#303641] shadow-xl max-w-md">
+            <h3 className="text-[#abb2bf] text-base mb-2">Delete {deleteNode.type}</h3>
+            <p className="text-[#828997] text-sm mb-4">
               Are you sure you want to delete "{deleteNode.name}"? This action cannot be undone.
             </p>
             <div className="flex gap-3 justify-end">
               <button
-                className="px-4 py-1.5 bg-transparent text-[#cccccc] border border-[#3c3c3c] hover:bg-[#3c3c3c] transition-colors text-sm"
+                className="px-4 py-1.5 bg-transparent text-[#abb2bf] border border-[#303641] hover:bg-[#303641] transition-colors text-sm"
                 onClick={() => setDeleteNode(null)}
               >
                 Cancel
               </button>
               <button
-                className="px-4 py-1.5 bg-[#f44747] text-white hover:bg-[#d93e3e] transition-colors text-sm"
+                className="px-4 py-1.5 bg-[#e06c75] text-white hover:bg-[#be5046] transition-colors text-sm"
                 onClick={() => deleteFileOrFolder(deleteNode)}
               >
                 Delete

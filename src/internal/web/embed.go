@@ -65,6 +65,12 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Handle workspace search and replace
+	if r.URL.Path == "/search" && (r.Method == "GET" || r.Method == "POST") {
+		handleSearch(w, r)
+		return
+	}
+
 	// Handle file operations
 	switch r.Method {
 	case "GET":
@@ -665,6 +671,62 @@ func handleCopy(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Successfully copied %s to %s", req.Source, req.Destination)
 	w.WriteHeader(http.StatusOK)
+}
+
+func handleSearch(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("content-type", "application/json")
+
+	rootPath := r.URL.Query().Get("root")
+	if rootPath == "" || rootPath == "." {
+		if cwd, err := os.Getwd(); err == nil {
+			rootPath = cwd
+		} else {
+			rootPath = "."
+		}
+	}
+
+	if r.Method == "GET" {
+		options := vfs.SearchOptions{
+			Query:         r.URL.Query().Get("q"),
+			Include:       r.URL.Query().Get("include"),
+			Exclude:       r.URL.Query().Get("exclude"),
+			CaseSensitive: r.URL.Query().Get("caseSensitive") == "true",
+			WholeWord:     r.URL.Query().Get("wholeWord") == "true",
+			UseRegex:      r.URL.Query().Get("regex") == "true",
+		}
+		if options.Query == "" {
+			json.NewEncoder(w).Encode(vfs.SearchResult{Files: []vfs.SearchFileResult{}})
+			return
+		}
+
+		result, err := vfs.SearchWorkspace(rootPath, options)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if result.Files == nil {
+			result.Files = []vfs.SearchFileResult{}
+		}
+		json.NewEncoder(w).Encode(result)
+		return
+	}
+
+	var options vfs.SearchOptions
+	if err := json.NewDecoder(r.Body).Decode(&options); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if options.Query == "" {
+		http.Error(w, "query is required", http.StatusBadRequest)
+		return
+	}
+
+	result, err := vfs.ReplaceWorkspace(rootPath, options)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	json.NewEncoder(w).Encode(result)
 }
 
 func handleDelete(w http.ResponseWriter, r *http.Request) {

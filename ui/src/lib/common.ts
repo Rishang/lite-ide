@@ -1,13 +1,30 @@
 export function getLanguageFromPath(path: string): string {
   const ext = path.split('.').pop()?.toLowerCase()
   const filename = path.split('/').pop()?.toLowerCase() || ''
+
+  if (filename === 'dockerfile' || filename.startsWith('dockerfile.')) {
+    return 'dockerfile'
+  }
+  if (filename === 'containerfile' || filename.startsWith('containerfile.')) {
+    return 'dockerfile'
+  }
+  if (filename === 'go.mod' || filename === 'go.sum' || filename === 'go.work') {
+    return 'go'
+  }
+  if (filename === 'gemfile' || filename === 'rakefile' || filename === 'guardfile' || filename === 'capfile') {
+    return 'ruby'
+  }
   
   switch (ext) {
     // Web Technologies
     case 'js':
+    case 'mjs':
+    case 'cjs':
     case 'jsx':
       return 'javascript'
     case 'ts':
+    case 'mts':
+    case 'cts':
     case 'tsx':
       return 'typescript'
     case 'html':
@@ -28,6 +45,8 @@ export function getLanguageFromPath(path: string): string {
     
     // Programming Languages
     case 'py':
+    case 'pyi':
+    case 'pyw':
       return 'python'
     case 'go':
       return 'go'
@@ -54,6 +73,8 @@ export function getLanguageFromPath(path: string): string {
     case 'r':
       return 'r'
     case 'rb':
+    case 'rake':
+    case 'gemspec':
       return 'ruby'
     case 'php':
       return 'php'
@@ -155,27 +176,28 @@ export function getLanguageFromPath(path: string): string {
 
 export function getThemeForLanguage(language: string): string {
   const themes: Record<string, string> = {
-    'javascript': 'vs-dark',
-    'typescript': 'vs-dark',
-    'python': 'vs-dark',
-    'go': 'vs-dark',
-    'rust': 'vs-dark',
-    'java': 'vs-dark',
-    'cpp': 'vs-dark',
-    'c': 'vs-dark',
-    'html': 'vs-dark',
-    'css': 'vs-dark',
-    'json': 'vs-dark',
-    'yaml': 'vs-dark',
-    'markdown': 'vs-dark',
-    'shell': 'vs-dark',
-    'php': 'vs-dark',
-    'ruby': 'vs-dark',
-    'xml': 'vs-dark',
-    'sql': 'vs-dark',
-    'text': 'vs-dark',
-    'terraform': 'vs-dark',
-    'dockerfile': 'vs-dark',
+    'javascript': 'atom-one-dark',
+    'typescript': 'atom-one-dark',
+    'python': 'atom-one-dark',
+    'go': 'atom-one-dark',
+    'rust': 'atom-one-dark',
+    'java': 'atom-one-dark',
+    'cpp': 'atom-one-dark',
+    'c': 'atom-one-dark',
+    'html': 'atom-one-dark',
+    'css': 'atom-one-dark',
+    'json': 'atom-one-dark',
+    'yaml': 'atom-one-dark',
+    'markdown': 'atom-one-dark',
+    'shell': 'atom-one-dark',
+    'php': 'atom-one-dark',
+    'ruby': 'atom-one-dark',
+    'xml': 'atom-one-dark',
+    'sql': 'atom-one-dark',
+    'text': 'atom-one-dark',
+    'terraform': 'atom-one-dark',
+    'dockerfile': 'atom-one-dark',
+    'svelte': 'atom-one-dark',
   }
-  return themes[language] || 'vs-dark'
+  return themes[language] || 'atom-one-dark'
 }

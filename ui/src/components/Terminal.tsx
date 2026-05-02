@@ -23,11 +23,34 @@ export function Terminal() {
     const term = new XTerminal({
       cursorBlink: true,
       theme: {
-        background: '#1e1e1e',
-        foreground: '#ffffff',
+        background: '#1f2329',
+        foreground: '#abb2bf',
+        cursor: '#abb2bf',
+        cursorAccent: '#1f2329',
+        selectionBackground: '#343b47',
+        black: '#171b21',
+        red: '#e06c75',
+        green: '#98c379',
+        yellow: '#e5c07b',
+        blue: '#61afef',
+        magenta: '#c678dd',
+        cyan: '#56b6c2',
+        white: '#abb2bf',
+        brightBlack: '#5c6370',
+        brightRed: '#e06c75',
+        brightGreen: '#98c379',
+        brightYellow: '#e5c07b',
+        brightBlue: '#61afef',
+        brightMagenta: '#c678dd',
+        brightCyan: '#56b6c2',
+        brightWhite: '#abb2bf',
       },
       fontSize: 14,
       fontFamily: 'JetBrains Mono, Menlo, Monaco, "Ubuntu Mono", monospace',
+      lineHeight: 1.25,
+      letterSpacing: 0,
+      allowTransparency: false,
+      scrollback: 5000,
       rows: 24,
       cols: 80,
     })
@@ -203,6 +226,9 @@ export function Terminal() {
   }, [])
 
   return (
-    <div className="h-full w-full border-t" ref={termRef} />
+    <div
+      className="h-full w-full bg-[#1f2329] px-3 py-2 outline-none [--terminal-bg:#1f2329] [--terminal-fg:#abb2bf] [&_.xterm]:h-full [&_.xterm-helpers]:top-2 [&_.xterm-viewport]:bg-[var(--terminal-bg)] [&_.xterm-screen]:focus:outline-none"
+      ref={termRef}
+    />
   )
 } 

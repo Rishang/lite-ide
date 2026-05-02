@@ -3,9 +3,11 @@ package vfs
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
+	"unicode/utf8"
 )
 
 // FileNode represents a file or directory in the tree
@@ -25,6 +27,52 @@ type TreeOptions struct {
 	SkipPatterns []string `json:"skipPatterns"` // Patterns to skip
 	RootPath     string   `json:"rootPath"`     // Root path for the tree
 }
+
+// SearchOptions configures workspace text search.
+type SearchOptions struct {
+	Query         string `json:"query"`
+	Replace       string `json:"replace,omitempty"`
+	Include       string `json:"include,omitempty"`
+	Exclude       string `json:"exclude,omitempty"`
+	CaseSensitive bool   `json:"caseSensitive"`
+	WholeWord     bool   `json:"wholeWord"`
+	UseRegex      bool   `json:"useRegex"`
+}
+
+// SearchMatch is a single text match inside a file.
+type SearchMatch struct {
+	Line          int    `json:"line"`
+	Column        int    `json:"column"`
+	EndColumn     int    `json:"endColumn"`
+	LineText      string `json:"lineText"`
+	PreviewStart  int    `json:"previewStart"`
+	PreviewLength int    `json:"previewLength"`
+}
+
+// SearchFileResult contains all matches for one file.
+type SearchFileResult struct {
+	Path    string        `json:"path"`
+	Matches []SearchMatch `json:"matches"`
+}
+
+// SearchResult is returned by workspace text search.
+type SearchResult struct {
+	Files    []SearchFileResult `json:"files"`
+	Matches  int                `json:"matches"`
+	LimitHit bool               `json:"limitHit"`
+}
+
+// ReplaceResult is returned after a workspace replacement.
+type ReplaceResult struct {
+	Files        int      `json:"files"`
+	Replacements int      `json:"replacements"`
+	Paths        []string `json:"paths"`
+}
+
+const (
+	maxSearchFileSize = 2 * 1024 * 1024
+	maxSearchMatches  = 10000
+)
 
 var (
 	mu = &sync.RWMutex{}
@@ -343,6 +391,259 @@ func Copy(srcPath, dstPath, rootPath string) error {
 		return copyDir(fullSrc, fullDst)
 	}
 	return copyFile(fullSrc, fullDst)
+}
+
+// SearchWorkspace searches text files below rootPath.
+func SearchWorkspace(rootPath string, options SearchOptions) (SearchResult, error) {
+	var result SearchResult
+	matcher, err := buildSearchRegexp(options)
+	if err != nil {
+		return result, err
+	}
+
+	err = filepath.WalkDir(rootPath, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if path == rootPath {
+			return nil
+		}
+
+		name := entry.Name()
+		if entry.IsDir() {
+			if skipDirs[name] {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
+		relPath, err := filepath.Rel(rootPath, path)
+		if err != nil {
+			return nil
+		}
+		if !matchesSearchFilters(filepath.ToSlash(relPath), options) {
+			return nil
+		}
+
+		info, err := entry.Info()
+		if err != nil || info.Size() > maxSearchFileSize {
+			return nil
+		}
+
+		content, err := os.ReadFile(path)
+		if err != nil || !utf8.Valid(content) || hasNulByte(content) {
+			return nil
+		}
+
+		fileResult := searchFileContent(path, rootPath, string(content), matcher)
+		if len(fileResult.Matches) == 0 {
+			return nil
+		}
+
+		for _, match := range fileResult.Matches {
+			if result.Matches >= maxSearchMatches {
+				result.LimitHit = true
+				return filepath.SkipAll
+			}
+			if len(result.Files) == 0 || result.Files[len(result.Files)-1].Path != fileResult.Path {
+				result.Files = append(result.Files, SearchFileResult{Path: fileResult.Path})
+			}
+			last := &result.Files[len(result.Files)-1]
+			last.Matches = append(last.Matches, match)
+			result.Matches++
+		}
+		return nil
+	})
+
+	return result, err
+}
+
+// ReplaceWorkspace replaces search matches in text files below rootPath.
+func ReplaceWorkspace(rootPath string, options SearchOptions) (ReplaceResult, error) {
+	var result ReplaceResult
+	matcher, err := buildSearchRegexp(options)
+	if err != nil {
+		return result, err
+	}
+
+	err = filepath.WalkDir(rootPath, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if path == rootPath {
+			return nil
+		}
+
+		name := entry.Name()
+		if entry.IsDir() {
+			if skipDirs[name] {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
+		relPath, err := filepath.Rel(rootPath, path)
+		if err != nil {
+			return nil
+		}
+		if !matchesSearchFilters(filepath.ToSlash(relPath), options) {
+			return nil
+		}
+
+		info, err := entry.Info()
+		if err != nil || info.Size() > maxSearchFileSize {
+			return nil
+		}
+
+		content, err := os.ReadFile(path)
+		if err != nil || !utf8.Valid(content) || hasNulByte(content) {
+			return nil
+		}
+
+		matches := matcher.FindAllIndex(content, -1)
+		if len(matches) == 0 {
+			return nil
+		}
+
+		replaced := matcher.ReplaceAllLiteralString(string(content), options.Replace)
+		if options.UseRegex {
+			replaced = matcher.ReplaceAllString(string(content), options.Replace)
+		}
+		if err := os.WriteFile(path, []byte(replaced), info.Mode()); err != nil {
+			return err
+		}
+
+		result.Files++
+		result.Replacements += len(matches)
+		result.Paths = append(result.Paths, "/"+filepath.ToSlash(relPath))
+		return nil
+	})
+
+	return result, err
+}
+
+func buildSearchRegexp(options SearchOptions) (*regexp.Regexp, error) {
+	pattern := options.Query
+	if !options.UseRegex {
+		pattern = regexp.QuoteMeta(pattern)
+	}
+	if options.WholeWord {
+		pattern = `\b` + pattern + `\b`
+	}
+	if !options.CaseSensitive {
+		pattern = `(?i)` + pattern
+	}
+	return regexp.Compile(pattern)
+}
+
+func matchesSearchFilters(relPath string, options SearchOptions) bool {
+	path := strings.TrimPrefix(relPath, "/")
+	if options.Include != "" && !pathMatchesAnyToken(path, options.Include) {
+		return false
+	}
+	if options.Exclude != "" && pathMatchesAnyToken(path, options.Exclude) {
+		return false
+	}
+	return true
+}
+
+func pathMatchesAnyToken(path, filter string) bool {
+	for _, token := range strings.Split(filter, ",") {
+		token = strings.TrimSpace(token)
+		if token == "" {
+			continue
+		}
+		normalized := strings.Trim(strings.ReplaceAll(token, "\\", "/"), "/")
+		if wildcardMatchesPath(path, normalized) {
+			return true
+		}
+	}
+	return false
+}
+
+func wildcardMatchesPath(path, pattern string) bool {
+	if pattern == "" {
+		return false
+	}
+	if !strings.ContainsAny(pattern, "*?") {
+		return strings.Contains(path, pattern)
+	}
+
+	targets := []string{path}
+	if !strings.Contains(pattern, "/") {
+		targets = append(targets, filepath.Base(path))
+	}
+
+	re, err := regexp.Compile("^" + globToRegexp(pattern) + "$")
+	if err != nil {
+		return false
+	}
+	for _, target := range targets {
+		if re.MatchString(target) {
+			return true
+		}
+	}
+	return false
+}
+
+func globToRegexp(pattern string) string {
+	var builder strings.Builder
+	for i := 0; i < len(pattern); i++ {
+		switch pattern[i] {
+		case '*':
+			if i+1 < len(pattern) && pattern[i+1] == '*' {
+				builder.WriteString(".*")
+				i++
+			} else {
+				builder.WriteString(`[^/]*`)
+			}
+		case '?':
+			builder.WriteString(`[^/]`)
+		default:
+			builder.WriteString(regexp.QuoteMeta(string(pattern[i])))
+		}
+	}
+	return builder.String()
+}
+
+func searchFileContent(path, rootPath, content string, matcher *regexp.Regexp) SearchFileResult {
+	relPath, err := filepath.Rel(rootPath, path)
+	if err != nil {
+		relPath = path
+	}
+	fileResult := SearchFileResult{Path: "/" + filepath.ToSlash(relPath)}
+	lines := strings.SplitAfter(content, "\n")
+	offset := 0
+
+	for lineIndex, line := range lines {
+		lineWithoutBreak := strings.TrimRight(line, "\r\n")
+		lineStart := offset
+		matches := matcher.FindAllStringIndex(lineWithoutBreak, -1)
+		for _, match := range matches {
+			start := lineStart + match[0]
+			end := lineStart + match[1]
+			fileResult.Matches = append(fileResult.Matches, SearchMatch{
+				Line:          lineIndex + 1,
+				Column:        utf8.RuneCountInString(content[lineStart:start]) + 1,
+				EndColumn:     utf8.RuneCountInString(content[lineStart:end]) + 1,
+				LineText:      lineWithoutBreak,
+				PreviewStart:  utf8.RuneCountInString(content[lineStart:start]),
+				PreviewLength: utf8.RuneCountInString(content[start:end]),
+			})
+		}
+		offset += len(line)
+	}
+
+	return fileResult
+}
+
+func hasNulByte(content []byte) bool {
+	for _, b := range content {
+		if b == 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func copyFile(src, dst string) error {

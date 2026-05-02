@@ -66,7 +66,7 @@ export function ResizablePanel({
           <div
             className={[
               "absolute inset-x-0 top-[1.5px] h-[1px] transition-colors duration-150",
-              isResizing ? "bg-[#007fd4]" : "bg-[#333] group-hover:bg-[#007fd4]",
+              isResizing ? "bg-[#61afef]" : "bg-[#111318] group-hover:bg-[#61afef]",
             ].join(" ")}
           />
           {/* Drag grip dots */}
@@ -77,7 +77,7 @@ export function ResizablePanel({
             ].join(" ")}
           >
             {[0, 1, 2].map(i => (
-              <span key={i} className="w-[3px] h-[3px] rounded-full bg-[#007fd4]" />
+              <span key={i} className="w-[3px] h-[3px] rounded-full bg-[#61afef]" />
             ))}
           </div>
         </div>

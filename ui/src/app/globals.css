@@ -1,35 +1,35 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #1e1e1e;
-  --color-foreground: #cccccc;
-  --color-card: #252526;
-  --color-card-foreground: #cccccc;
-  --color-popover: #252526;
-  --color-popover-foreground: #cccccc;
-  --color-primary: #007acc;
+  --color-background: #1f2329;
+  --color-foreground: #abb2bf;
+  --color-card: #191d23;
+  --color-card-foreground: #abb2bf;
+  --color-popover: #191d23;
+  --color-popover-foreground: #abb2bf;
+  --color-primary: #61afef;
   --color-primary-foreground: #ffffff;
-  --color-secondary: #252526;
-  --color-secondary-foreground: #cccccc;
-  --color-muted: #2d2d2d;
-  --color-muted-foreground: #858585;
-  --color-accent: #37373d;
-  --color-accent-foreground: #cccccc;
-  --color-destructive: #f44747;
+  --color-secondary: #191d23;
+  --color-secondary-foreground: #abb2bf;
+  --color-muted: #252a32;
+  --color-muted-foreground: #5c6370;
+  --color-accent: #252a32;
+  --color-accent-foreground: #abb2bf;
+  --color-destructive: #e06c75;
   --color-destructive-foreground: #ffffff;
-  --color-border: #3c3c3c;
-  --color-input: #3c3c3c;
-  --color-ring: #007acc;
+  --color-border: #303641;
+  --color-input: #303641;
+  --color-ring: #61afef;
   --radius: 0.25rem;
 }
 
 * {
-  border-color: #3c3c3c;
+  border-color: #303641;
 }
 
 body {
-  background-color: #1e1e1e;
-  color: #cccccc;
+  background-color: #1f2329;
+  color: #abb2bf;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 }
 
@@ -63,27 +63,27 @@ body {
   top: 0;
   bottom: 0;
   width: 1px;
-  background-color: #404040;
+  background-color: #303641;
 }
 
 /* File explorer row hover */
 .file-row:hover {
-  background-color: #2a2d2e;
+  background-color: #252a32;
 }
 
 .file-row.active {
-  background-color: #37373d;
+  background-color: #252a32;
 }
 
 /* Context menu styling */
 .context-menu {
-  background-color: #252526;
-  border: 1px solid #454545;
+  background-color: #191d23;
+  border: 1px solid #111318;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.36);
 }
 
 .context-menu-item:hover {
-  background-color: #094771;
+  background-color: #343b47;
 }
 
 /* Thin scrollbar utility */

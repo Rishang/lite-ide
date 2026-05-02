@@ -20,12 +20,14 @@ interface EditorProps {
   path: string
   language?: string
   theme?: string
+  targetLine?: number | null
+  targetColumn?: number | null
   onChange: (value: string) => void
   onSave: () => void
   onMarkersChange?: (markers: MarkerData[]) => void
 }
 
-export function Editor({ content, path, language, theme = 'vs-dark', onChange, onSave, onMarkersChange }: EditorProps) {
+export function Editor({ content, path, language, theme = 'atom-one-dark', targetLine, targetColumn, onChange, onSave, onMarkersChange }: EditorProps) {
   const editorRef = useRef<any>(null)
   const onMarkersChangeRef = useRef(onMarkersChange)
   onMarkersChangeRef.current = onMarkersChange
@@ -56,8 +58,16 @@ export function Editor({ content, path, language, theme = 'vs-dark', onChange, o
     }
   }, [language])
 
+  useEffect(() => {
+    if (!editorRef.current || !targetLine) return
+    const column = targetColumn || 1
+    editorRef.current.revealPositionInCenter({ lineNumber: targetLine, column })
+    editorRef.current.setPosition({ lineNumber: targetLine, column })
+    editorRef.current.focus()
+  }, [path, targetLine, targetColumn])
+
   return (
-    <div className="h-full w-full min-h-0 min-w-0 flex-1 bg-[#1e1e1e]">
+    <div className="h-full w-full min-h-0 min-w-0 flex-1 bg-[#1f2329]">
       <Suspense fallback={<LoadingScreen />}>
         <div className="h-full w-full pb-8">
           <LazyMonacoEditor

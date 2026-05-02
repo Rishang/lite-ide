@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Files,
   Terminal as TerminalIcon,
@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { FileExplorer } from "@/components/FileExplorer";
 import { Editor, MarkerData } from "@/components/Editor";
+import { SearchPanel } from "@/components/SearchPanel";
 import { TabBar } from "@/components/TabBar";
 import { ResizablePanel } from "@/components/ResizablePanel";
 import { FileNode } from "@/types/file";
@@ -34,6 +35,8 @@ const TerminalPanel = dynamic(
   },
 );
 
+const DEFAULT_SIDEBAR_WIDTH = 300;
+
 export function HomeContent() {
   const [tree, setTree] = useState<FileNode[]>([]);
   const [tabs, setTabs] = useState<
@@ -48,16 +51,27 @@ export function HomeContent() {
     config.showEditor ? false : !config.showTerminal,
   );
   const [isTerminalMaximized, setIsTerminalMaximized] = useState(false);
-  const [explorerWidth, setExplorerWidth] = useState(226);
+  const [explorerWidth, setExplorerWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
   const [isExplorerMinimized, setIsExplorerMinimized] = useState(
     !config.showEditor,
   );
-  const [lastExplorerWidth, setLastExplorerWidth] = useState(226);
+  const [lastExplorerWidth, setLastExplorerWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
   const [windowHeight, setWindowHeight] = useState(600);
   const [activePanel, setActivePanel] = useState<string>("files");
   const [markers, setMarkers] = useState<MarkerData[]>([]);
+  const [searchTarget, setSearchTarget] = useState<{
+    path: string;
+    line: number;
+    column: number;
+  } | null>(null);
+  const tabsRef = useRef(tabs);
+  const autosaveInFlightRef = useRef<Set<string>>(new Set());
   const searchParams = useSearchParams();
+
+  useEffect(() => {
+    tabsRef.current = tabs;
+  }, [tabs]);
 
   useEffect(() => {
     const pathParam = searchParams.get("p");
@@ -114,6 +128,16 @@ export function HomeContent() {
           }
           return newMinimized;
         });
+      }
+
+      // Ctrl+Shift+F — workspace search
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        setActivePanel("search");
+        if (isExplorerMinimized) {
+          setIsExplorerMinimized(false);
+          setExplorerWidth(lastExplorerWidth);
+        }
       }
     };
 
@@ -207,8 +231,11 @@ export function HomeContent() {
     }
   };
 
-  const openFile = async (path: string) => {
+  const openFile = async (path: string, line?: number, column?: number) => {
     try {
+      if (line) {
+        setSearchTarget({ path, line, column: column || 1 });
+      }
       const normalizedPath = path.startsWith("/") ? path : "/" + path;
       const response = await fetch(
         `${config.apiEndpoint}/api/files${normalizedPath}?root=${encodeURIComponent(currentPath)}`,
@@ -234,16 +261,56 @@ export function HomeContent() {
       );
       if (!response.ok)
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      const newTabs = new Map(tabs);
-      const tab = newTabs.get(path);
-      if (tab) {
-        tab.dirty = false;
-        setTabs(newTabs);
-      }
+      setTabs((prevTabs) => {
+        const tab = prevTabs.get(path);
+        if (!tab || tab.content !== content) return prevTabs;
+        const newTabs = new Map(prevTabs);
+        newTabs.set(path, { ...tab, dirty: false });
+        return newTabs;
+      });
     } catch (error) {
       console.error("Failed to save file:", error);
     }
   };
+
+  useEffect(() => {
+    if (!activeTab) return;
+    const path = activeTab;
+    const normalizedPath = path.startsWith("/") ? path : "/" + path;
+    const rootPath = currentPath;
+
+    const interval = window.setInterval(async () => {
+      if (autosaveInFlightRef.current.has(path)) return;
+
+      const tab = tabsRef.current.get(path);
+      if (!tab?.dirty) return;
+
+      const content = tab.content;
+      autosaveInFlightRef.current.add(path);
+      try {
+        const response = await fetch(
+          `${config.apiEndpoint}/api/files${normalizedPath}?root=${encodeURIComponent(rootPath)}`,
+          { method: "PUT", body: content },
+        );
+        if (!response.ok)
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+
+        setTabs((prevTabs) => {
+          const latestTab = prevTabs.get(path);
+          if (!latestTab || latestTab.content !== content) return prevTabs;
+          const newTabs = new Map(prevTabs);
+          newTabs.set(path, { ...latestTab, dirty: false });
+          return newTabs;
+        });
+      } catch (error) {
+        console.error("Autosave failed:", error);
+      } finally {
+        autosaveInFlightRef.current.delete(path);
+      }
+    }, 2000);
+
+    return () => window.clearInterval(interval);
+  }, [activeTab, currentPath]);
 
   const closeTab = (path: string) => {
     const newTabs = new Map(tabs);
@@ -258,13 +325,13 @@ export function HomeContent() {
   };
 
   const updateTabContent = (path: string, content: string) => {
-    const newTabs = new Map(tabs);
-    const tab = newTabs.get(path);
-    if (tab) {
-      tab.content = content;
-      tab.dirty = true;
-      setTabs(newTabs);
-    }
+    setTabs((prevTabs) => {
+      const tab = prevTabs.get(path);
+      if (!tab) return prevTabs;
+      const newTabs = new Map(prevTabs);
+      newTabs.set(path, { content, dirty: true });
+      return newTabs;
+    });
   };
 
   const handleFileRename = (oldPath: string, newPath: string) => {
@@ -286,6 +353,27 @@ export function HomeContent() {
   const saveSpecificFile = async (path: string): Promise<void> => {
     const tab = tabs.get(path);
     if (tab) await saveFile(path, tab.content);
+  };
+
+  const refreshReplacedTabs = async (paths: string[]) => {
+    if (paths.length === 0) return;
+    const openPaths = paths.filter((path) => tabs.has(path));
+    if (openPaths.length > 0) {
+      const newTabs = new Map(tabs);
+      await Promise.all(
+        openPaths.map(async (path) => {
+          const normalizedPath = path.startsWith("/") ? path : "/" + path;
+          const response = await fetch(
+            `${config.apiEndpoint}/api/files${normalizedPath}?root=${encodeURIComponent(currentPath)}`,
+          );
+          if (response.ok) {
+            newTabs.set(path, { content: await response.text(), dirty: false });
+          }
+        }),
+      );
+      setTabs(newTabs);
+    }
+    refreshTree();
   };
 
   /**
@@ -325,14 +413,14 @@ export function HomeContent() {
   const getFileName = (path: string) => path.split("/").pop() || path;
 
   return (
-    <div className="flex h-screen bg-[#1e1e1e] text-white overflow-hidden">
+    <div className="flex h-screen bg-[#1f2329] text-white overflow-hidden">
       {/* Activity Bar */}
       {config.showEditor && (
-        <div className="w-12 bg-[#333333] flex flex-col items-center py-1 flex-shrink-0 border-r border-[#252526]">
+        <div className="w-12 bg-[#191d23] flex flex-col items-center py-1 flex-shrink-0 border-r border-[#191d23]">
           <button
             className={`w-12 h-12 flex items-center justify-center transition-colors relative ${activePanel === "files"
               ? "text-white"
-              : "text-[#858585] hover:text-white"
+              : "text-[#5c6370] hover:text-white"
               }`}
             onClick={() => {
               if (activePanel === "files" && !isExplorerMinimized) {
@@ -354,32 +442,66 @@ export function HomeContent() {
             )}
             <Files className="w-6 h-6" />
           </button>
+          <button
+            className={`w-12 h-12 flex items-center justify-center transition-colors relative ${activePanel === "search"
+              ? "text-white"
+              : "text-[#5c6370] hover:text-white"
+              }`}
+            onClick={() => {
+              if (activePanel === "search" && !isExplorerMinimized) {
+                setIsExplorerMinimized(true);
+                setLastExplorerWidth(explorerWidth);
+                setExplorerWidth(0);
+              } else {
+                setActivePanel("search");
+                if (isExplorerMinimized) {
+                  setIsExplorerMinimized(false);
+                  setExplorerWidth(lastExplorerWidth);
+                }
+              }
+            }}
+            title="Search (Ctrl+Shift+F)"
+          >
+            {activePanel === "search" && !isExplorerMinimized && (
+              <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-white" />
+            )}
+            <Search className="w-6 h-6" />
+          </button>
         </div>
       )}
 
-      {/* File Explorer Sidebar */}
+      {/* Sidebar */}
       {config.showEditor && !isExplorerMinimized && (
         <>
           <div
             style={{ width: `${explorerWidth}px` }}
             className="flex-shrink-0 transition-none"
           >
-            <FileExplorer
-              tree={tree}
-              onFileOpen={openFile}
-              onFileRename={handleFileRename}
-              onCheckFileDirty={checkFileDirty}
-              onSaveFile={saveSpecificFile}
-              className="h-full"
-              currentPath={currentPath}
-              onPathChange={handlePathChange}
-              onRefresh={refreshTree}
-              showMinimizeButton={false}
-              activeFilePath={activeTab}
-            />
+            {activePanel === "search" ? (
+              <SearchPanel
+                currentPath={currentPath}
+                onFileOpen={openFile}
+                onReplaceComplete={refreshReplacedTabs}
+                className="h-full"
+              />
+            ) : (
+              <FileExplorer
+                tree={tree}
+                onFileOpen={openFile}
+                onFileRename={handleFileRename}
+                onCheckFileDirty={checkFileDirty}
+                onSaveFile={saveSpecificFile}
+                className="h-full"
+                currentPath={currentPath}
+                onPathChange={handlePathChange}
+                onRefresh={refreshTree}
+                showMinimizeButton={false}
+                activeFilePath={activeTab}
+              />
+            )}
           </div>
           <div
-            className="w-[3px] bg-transparent hover:bg-[#007acc] cursor-col-resize flex-shrink-0 transition-colors"
+            className="w-[3px] bg-transparent hover:bg-[#61afef] cursor-col-resize flex-shrink-0 transition-colors"
             onMouseDown={handleResizeStart}
           />
         </>
@@ -402,27 +524,35 @@ export function HomeContent() {
 
             {/* Breadcrumbs */}
             {activeTab && (
-              <div className="flex items-center px-4 py-1 bg-[#1e1e1e] border-b border-[#252526] text-xs">
+              <div className="flex items-center px-4 py-1 bg-[#1f2329] border-b border-[#191d23] text-xs">
                 {getBreadcrumbs().map((part, index, arr) => (
                   <span key={index} className="flex items-center">
-                    <span className="text-[#cccccc] hover:text-white cursor-pointer hover:underline">
+                    <span className="text-[#abb2bf] hover:text-white cursor-pointer hover:underline">
                       {part}
                     </span>
                     {index < arr.length - 1 && (
-                      <ChevronRight className="w-3 h-3 mx-1 text-[#666] flex-shrink-0" />
+                      <ChevronRight className="w-3 h-3 mx-1 text-[#5c6370] flex-shrink-0" />
                     )}
                   </span>
                 ))}
               </div>
             )}
 
-            <div className="flex-1 min-h-0 min-w-0 bg-[#1e1e1e] overflow-hidden">
+            <div className="flex-1 min-h-0 min-w-0 bg-[#1f2329] overflow-hidden">
               {activeTab ? (
                 <Editor
                   content={tabs.get(activeTab)?.content || ""}
                   path={activeTab}
                   language={getLanguageFromPath(activeTab)}
                   theme={getThemeForLanguage(getLanguageFromPath(activeTab))}
+                  targetLine={
+                    searchTarget?.path === activeTab ? searchTarget.line : null
+                  }
+                  targetColumn={
+                    searchTarget?.path === activeTab
+                      ? searchTarget.column
+                      : null
+                  }
                   onChange={(content: string) =>
                     updateTabContent(activeTab, content)
                   }
@@ -432,7 +562,7 @@ export function HomeContent() {
                   onMarkersChange={setMarkers}
                 />
               ) : (
-                <div className="h-full flex flex-col items-center justify-center text-[#5a5a5a]">
+                <div className="h-full flex flex-col items-center justify-center text-[#5c6370]">
                   <div className="text-6xl font-light mb-4 opacity-20">⌨</div>
                   <div className="text-lg font-light">Lite IDE</div>
                   <div className="text-sm mt-2 opacity-60">
@@ -468,7 +598,7 @@ export function HomeContent() {
 
         {/* Status Bar */}
         {config.showEditor && (
-          <div className="h-[18px] bg-[#007acc] flex items-center justify-between px-3 text-xs text-white flex-shrink-0 select-none">
+          <div className="h-[18px] bg-[#61afef] flex items-center justify-between px-3 text-xs text-white flex-shrink-0 select-none">
             <div className="flex items-center gap-3">
               {activeTab && (
                 <>
