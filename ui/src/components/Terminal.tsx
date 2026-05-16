@@ -62,6 +62,7 @@ export function Terminal() {
     term.loadAddon(new WebLinksAddon())
     term.open(termRef.current)
 
+    // Keep PTY resize messages deduped so width changes do not spam the shell.
     const sendPtyResize = (cols: number, rows: number) => {
       if (cols <= 0 || rows <= 0) {
         return
@@ -80,6 +81,8 @@ export function Terminal() {
       socketRef.current.send(JSON.stringify({ type: 'resize', cols, rows }))
     }
 
+    // Fit the visible terminal to its container, but keep the backend columns stable
+    // after the first attach so prompt redraws do not spill duplicate lines into scrollback.
     const fitTerminal = () => {
       if (!termRef.current || termRef.current.offsetParent === null || !fitAddon.current) {
         return
@@ -97,9 +100,11 @@ export function Terminal() {
 
         const lastSize = lastPtySizeRef.current
         if (!lastSize) {
+          // Initial attach: sync both xterm and the PTY to the live container size.
           term.resize(dimensions.cols, dimensions.rows)
           sendPtyResize(dimensions.cols, dimensions.rows)
         } else if (lastSize.rows !== dimensions.rows) {
+          // Height changes are safe to forward; width changes stay local to xterm.
           term.resize(lastSize.cols, dimensions.rows)
           sendPtyResize(lastSize.cols, dimensions.rows)
         } else if (term.rows !== dimensions.rows || term.cols !== lastSize.cols) {
@@ -129,6 +134,8 @@ export function Terminal() {
     }
     window.addEventListener('resize', handleResize)
 
+    // Watch the terminal container itself so panel drags and maximize/minimize changes
+    // still trigger a fit even when the browser window does not change size.
     const resizeObserver = new ResizeObserver(() => {
       scheduleFit(50)
     })
