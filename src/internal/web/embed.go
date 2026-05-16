@@ -45,7 +45,9 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Debug logging
-	log.Printf("[API] %s %s", r.Method, r.URL.Path)
+	if os.Getenv("VERBOSE") != "" {
+		log.Printf("[API] %s %s", r.Method, r.URL.Path)
+	}
 
 	// Handle SSE endpoint for file watching
 	if r.URL.Path == "/watch" && r.Method == "GET" {

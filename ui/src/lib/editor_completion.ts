@@ -1,653 +1,118 @@
-import * as monaco from 'monaco-editor'
-
-// Enhanced completion item types
-export interface CompletionItem {
-  label: string
-  kind: monaco.languages.CompletionItemKind
-  insertText: string
-  documentation?: string
-  detail?: string
-  insertTextRules?: monaco.languages.CompletionItemInsertTextRule
-  sortText?: string
-  filterText?: string
-}
-
-// Language-specific completion providers
-export class EditorCompletionProvider {
-  private monaco: any
-
-  constructor(monacoInstance: any) {
-    this.monaco = monacoInstance
-  }
-
-  // Initialize all completion providers
-  public initialize() {
-    this.setupJavaScriptCompletions()
-    this.setupTypeScriptCompletions()
-    this.setupPythonCompletions()
-    this.setupGoCompletions()
-    this.setupHTMLCompletions()
-    this.setupCSSCompletions()
-    this.setupJSONCompletions()
-    this.setupReactCompletions()
-  }
-
-  // JavaScript/TypeScript completions
-  private setupJavaScriptCompletions() {
-    const jsCompletions = [
-      // Console methods
-      {
-        label: 'console.log',
-        kind: this.monaco.languages.CompletionItemKind.Method,
-        insertText: 'console.log(${1:value})',
-        documentation: 'Log a value to the console',
-        detail: 'console.log(value: any): void'
-      },
-      {
-        label: 'console.error',
-        kind: this.monaco.languages.CompletionItemKind.Method,
-        insertText: 'console.error(${1:error})',
-        documentation: 'Log an error to the console',
-        detail: 'console.error(error: any): void'
-      },
-      {
-        label: 'console.warn',
-        kind: this.monaco.languages.CompletionItemKind.Method,
-        insertText: 'console.warn(${1:warning})',
-        documentation: 'Log a warning to the console',
-        detail: 'console.warn(warning: any): void'
-      },
-      {
-        label: 'console.table',
-        kind: this.monaco.languages.CompletionItemKind.Method,
-        insertText: 'console.table(${1:data})',
-        documentation: 'Display data as a table in console',
-        detail: 'console.table(data: any[]): void'
-      },
-
-      // Async patterns
-      {
-        label: 'async function',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'async function ${1:functionName}(${2:params}) {\n\t${3:// code}\n}',
-        documentation: 'Create an async function',
-        detail: 'Async function declaration'
-      },
-      {
-        label: 'arrow function',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: '(${1:params}) => {\n\t${2:// code}\n}',
-        documentation: 'Create an arrow function',
-        detail: 'Arrow function expression'
-      },
-      {
-        label: 'async arrow function',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'async (${1:params}) => {\n\t${2:// code}\n}',
-        documentation: 'Create an async arrow function',
-        detail: 'Async arrow function expression'
-      },
-
-      // API calls
-      {
-        label: 'fetch',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'fetch(${1:url})\n\t.then(response => response.json())\n\t.then(data => {\n\t\t${2:// handle data}\n\t})\n\t.catch(error => {\n\t\t${3:// handle error}\n\t})',
-        documentation: 'Make a fetch request with error handling',
-        detail: 'Fetch API with JSON parsing and error handling'
-      },
-      {
-        label: 'async fetch',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'try {\n\tconst response = await fetch(${1:url})\n\tconst data = await response.json()\n\t${2:// handle data}\n} catch (error) {\n\t${3:// handle error}\n}',
-        documentation: 'Make an async fetch request with try-catch',
-        detail: 'Async/await fetch with error handling'
-      },
-
-      // Control structures
-      {
-        label: 'if statement',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'if (${1:condition}) {\n\t${2:// code}\n}',
-        documentation: 'Basic if statement',
-        detail: 'Conditional statement'
-      },
-      {
-        label: 'if-else statement',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'if (${1:condition}) {\n\t${2:// code}\n} else {\n\t${3:// code}\n}',
-        documentation: 'If-else statement',
-        detail: 'Conditional statement with else'
-      },
-      {
-        label: 'switch statement',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'switch (${1:expression}) {\n\tcase ${2:value}:\n\t\t${3:// code}\n\t\tbreak\n\tdefault:\n\t\t${4:// code}\n}',
-        documentation: 'Switch statement',
-        detail: 'Multi-way branch statement'
-      },
-
-      // Loops
-      {
-        label: 'for loop',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'for (let ${1:i} = 0; ${1:i} < ${2:array}.length; ${1:i}++) {\n\t${3:// code}\n}',
-        documentation: 'Traditional for loop',
-        detail: 'Indexed for loop'
-      },
-      {
-        label: 'for-of loop',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'for (const ${1:item} of ${2:array}) {\n\t${3:// code}\n}',
-        documentation: 'For-of loop for arrays',
-        detail: 'Iterate over array elements'
-      },
-      {
-        label: 'for-in loop',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'for (const ${1:key} in ${2:object}) {\n\tif (${2:object}.hasOwnProperty(${1:key})) {\n\t\t${3:// code}\n\t}\n}',
-        documentation: 'For-in loop for objects',
-        detail: 'Iterate over object properties'
-      },
-      {
-        label: 'while loop',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'while (${1:condition}) {\n\t${2:// code}\n}',
-        documentation: 'While loop',
-        detail: 'Loop while condition is true'
-      },
-
-      // Error handling
-      {
-        label: 'try-catch',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'try {\n\t${1:// code}\n} catch (error) {\n\t${2:// handle error}\n}',
-        documentation: 'Basic try-catch block',
-        detail: 'Error handling with catch'
-      },
-      {
-        label: 'try-catch-finally',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'try {\n\t${1:// code}\n} catch (error) {\n\t${2:// handle error}\n} finally {\n\t${3:// cleanup}\n}',
-        documentation: 'Try-catch-finally block',
-        detail: 'Error handling with cleanup'
-      },
-
-      // Classes
-      {
-        label: 'class',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'class ${1:ClassName} {\n\tconstructor(${2:params}) {\n\t\t${3:// constructor code}\n\t}\n}',
-        documentation: 'Class declaration',
-        detail: 'ES6 class with constructor'
-      },
-      {
-        label: 'class with methods',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'class ${1:ClassName} {\n\tconstructor(${2:params}) {\n\t\t${3:// constructor code}\n\t}\n\n\t${4:methodName}(${5:params}) {\n\t\t${6:// method code}\n\t}\n}',
-        documentation: 'Class with method',
-        detail: 'ES6 class with constructor and method'
-      },
-
-      // Modules
-      {
-        label: 'import',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'import { ${1:module} } from \'${2:package}\'',
-        documentation: 'Named import',
-        detail: 'Import specific exports from module'
-      },
-      {
-        label: 'import default',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'import ${1:module} from \'${2:package}\'',
-        documentation: 'Default import',
-        detail: 'Import default export from module'
-      },
-      {
-        label: 'import all',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'import * as ${1:alias} from \'${2:package}\'',
-        documentation: 'Namespace import',
-        detail: 'Import entire module as namespace'
-      },
-      {
-        label: 'export',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'export { ${1:item} }',
-        documentation: 'Named export',
-        detail: 'Export specific items'
-      },
-      {
-        label: 'export default',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'export default ${1:item}',
-        documentation: 'Default export',
-        detail: 'Export as default'
-      }
-    ]
-
-    this.registerCompletions('javascript', jsCompletions)
-  }
-
-  // TypeScript specific completions
-  private setupTypeScriptCompletions() {
-    const tsCompletions = [
-      ...this.getJavaScriptCompletions(), // Include JS completions
-      // TypeScript specific
-      {
-        label: 'interface',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'interface ${1:InterfaceName} {\n\t${2:property}: ${3:type}\n}',
-        documentation: 'TypeScript interface',
-        detail: 'Interface definition'
-      },
-      {
-        label: 'type alias',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'type ${1:TypeName} = ${2:type}',
-        documentation: 'Type alias',
-        detail: 'TypeScript type alias'
-      },
-      {
-        label: 'generic function',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'function ${1:functionName}<${2:T}>(${3:param}: ${2:T}): ${2:T} {\n\t${4:return param}\n}',
-        documentation: 'Generic function',
-        detail: 'Function with generic type parameter'
-      },
-      {
-        label: 'enum',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'enum ${1:EnumName} {\n\t${2:Value1} = ${3:0},\n\t${4:Value2} = ${5:1}\n}',
-        documentation: 'TypeScript enum',
-        detail: 'Enum definition'
-      }
-    ]
-
-    this.registerCompletions('typescript', tsCompletions)
-  }
-
-  // Python completions
-  private setupPythonCompletions() {
-    const pythonCompletions = [
-      {
-        label: 'def',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'def ${1:function_name}(${2:params}):\n\t${3:pass}',
-        documentation: 'Function definition',
-        detail: 'Define a Python function'
-      },
-      {
-        label: 'class',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'class ${1:ClassName}:\n\tdef __init__(self, ${2:params}):\n\t\t${3:pass}',
-        documentation: 'Class definition',
-        detail: 'Define a Python class with constructor'
-      },
-      {
-        label: 'if',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'if ${1:condition}:\n\t${2:pass}',
-        documentation: 'If statement',
-        detail: 'Conditional statement'
-      },
-      {
-        label: 'if-else',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'if ${1:condition}:\n\t${2:pass}\nelse:\n\t${3:pass}',
-        documentation: 'If-else statement',
-        detail: 'Conditional with else'
-      },
-      {
-        label: 'for',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'for ${1:item} in ${2:iterable}:\n\t${3:pass}',
-        documentation: 'For loop',
-        detail: 'Iterate over iterable'
-      },
-      {
-        label: 'while',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'while ${1:condition}:\n\t${2:pass}',
-        documentation: 'While loop',
-        detail: 'Loop while condition is true'
-      },
-      {
-        label: 'try',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'try:\n\t${1:pass}\nexcept ${2:Exception} as ${3:e}:\n\t${4:pass}',
-        documentation: 'Try-except block',
-        detail: 'Exception handling'
-      },
-      {
-        label: 'import',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'import ${1:module}',
-        documentation: 'Import module',
-        detail: 'Import Python module'
-      },
-      {
-        label: 'from import',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'from ${1:module} import ${2:name}',
-        documentation: 'From import',
-        detail: 'Import specific from module'
-      },
-      {
-        label: 'print',
-        kind: this.monaco.languages.CompletionItemKind.Function,
-        insertText: 'print(${1:value})',
-        documentation: 'Print to console',
-        detail: 'Print function'
-      },
-      {
-        label: 'list comprehension',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: '[${1:expression} for ${2:item} in ${3:iterable}]',
-        documentation: 'List comprehension',
-        detail: 'Create list with comprehension'
-      },
-      {
-        label: 'dict comprehension',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: '{${1:key}: ${2:value} for ${3:item} in ${4:iterable}}',
-        documentation: 'Dictionary comprehension',
-        detail: 'Create dict with comprehension'
-      }
-    ]
-
-    this.registerCompletions('python', pythonCompletions)
-  }
-
-  // Go completions
-  private setupGoCompletions() {
-    const goCompletions = [
-      {
-        label: 'func',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'func ${1:functionName}(${2:params}) ${3:returnType} {\n\t${4:return}\n}',
-        documentation: 'Function definition',
-        detail: 'Define a Go function'
-      },
-      {
-        label: 'method',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'func (${1:receiver} *${2:Type}) ${3:methodName}(${4:params}) ${5:returnType} {\n\t${6:return}\n}',
-        documentation: 'Method definition',
-        detail: 'Define a method on a type'
-      },
-      {
-        label: 'struct',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'type ${1:StructName} struct {\n\t${2:FieldName} ${3:FieldType}\n}',
-        documentation: 'Struct definition',
-        detail: 'Define a Go struct'
-      },
-      {
-        label: 'interface',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'type ${1:InterfaceName} interface {\n\t${2:MethodName}(${3:params}) ${4:returnType}\n}',
-        documentation: 'Interface definition',
-        detail: 'Define a Go interface'
-      },
-      {
-        label: 'if',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'if ${1:condition} {\n\t${2:// code}\n}',
-        documentation: 'If statement',
-        detail: 'Conditional statement'
-      },
-      {
-        label: 'for',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'for ${1:i} := 0; ${1:i} < ${2:length}; ${1:i}++ {\n\t${3:// code}\n}',
-        documentation: 'For loop',
-        detail: 'Traditional for loop'
-      },
-      {
-        label: 'range',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'for ${1:index}, ${2:value} := range ${3:collection} {\n\t${4:// code}\n}',
-        documentation: 'Range loop',
-        detail: 'Iterate over collection with range'
-      },
-      {
-        label: 'fmt.Println',
-        kind: this.monaco.languages.CompletionItemKind.Function,
-        insertText: 'fmt.Println(${1:value})',
-        documentation: 'Print to console',
-        detail: 'Print with newline'
-      },
-      {
-        label: 'go routine',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'go func() {\n\t${1:// code}\n}()',
-        documentation: 'Go routine',
-        detail: 'Start a new goroutine'
-      },
-      {
-        label: 'channel',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: '${1:ch} := make(chan ${2:type})',
-        documentation: 'Channel creation',
-        detail: 'Create a new channel'
-      }
-    ]
-
-    this.registerCompletions('go', goCompletions)
-  }
-
-  // HTML completions
-  private setupHTMLCompletions() {
-    const htmlCompletions = [
-      {
-        label: 'html5',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: '<!DOCTYPE html>\n<html lang="en">\n<head>\n\t<meta charset="UTF-8">\n\t<meta name="viewport" content="width=device-width, initial-scale=1.0">\n\t<title>${1:Document}</title>\n</head>\n<body>\n\t${2}\n</body>\n</html>',
-        documentation: 'HTML5 boilerplate',
-        detail: 'Complete HTML5 document structure'
-      },
-      {
-        label: 'div',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: '<div class="${1:className}">\n\t${2}\n</div>',
-        documentation: 'Div element',
-        detail: 'Generic container element'
-      },
-      {
-        label: 'script',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: '<script${1: type="module"}>\n\t${2:// code}\n</script>',
-        documentation: 'Script tag',
-        detail: 'JavaScript script element'
-      },
-      {
-        label: 'link',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: '<link rel="stylesheet" href="${1:styles.css}">',
-        documentation: 'CSS link',
-        detail: 'Link to external stylesheet'
-      }
-    ]
-
-    this.registerCompletions('html', htmlCompletions)
-  }
-
-  // CSS completions
-  private setupCSSCompletions() {
-    const cssCompletions = [
-      {
-        label: 'flexbox',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'display: flex;\njustify-content: ${1:center};\nalign-items: ${2:center};',
-        documentation: 'Flexbox layout',
-        detail: 'Basic flexbox setup'
-      },
-      {
-        label: 'grid',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'display: grid;\ngrid-template-columns: ${1:1fr 1fr};\ngap: ${2:1rem};',
-        documentation: 'CSS Grid',
-        detail: 'Basic grid layout'
-      },
-      {
-        label: 'media query',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: '@media (${1:max-width}: ${2:768px}) {\n\t${3:// styles}\n}',
-        documentation: 'Media query',
-        detail: 'Responsive design breakpoint'
-      },
-      {
-        label: 'keyframes',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: '@keyframes ${1:animationName} {\n\tfrom {\n\t\t${2:// start styles}\n\t}\n\tto {\n\t\t${3:// end styles}\n\t}\n}',
-        documentation: 'CSS keyframes',
-        detail: 'CSS animation keyframes'
-      }
-    ]
-
-    this.registerCompletions('css', cssCompletions)
-    this.registerCompletions('scss', cssCompletions)
-  }
-
-  // JSON completions
-  private setupJSONCompletions() {
-    const jsonCompletions = [
-      {
-        label: 'package.json',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: '{\n\t"name": "${1:package-name}",\n\t"version": "1.0.0",\n\t"description": "${2:description}",\n\t"main": "index.js",\n\t"scripts": {\n\t\t"start": "node index.js"\n\t},\n\t"dependencies": {\n\t\t${3}\n\t}\n}',
-        documentation: 'Package.json template',
-        detail: 'Complete package.json structure'
-      },
-      {
-        label: 'tsconfig.json',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: '{\n\t"compilerOptions": {\n\t\t"target": "es2020",\n\t\t"module": "commonjs",\n\t\t"lib": ["es2020"],\n\t\t"outDir": "./dist",\n\t\t"rootDir": "./src",\n\t\t"strict": true,\n\t\t"esModuleInterop": true,\n\t\t"skipLibCheck": true,\n\t\t"forceConsistentCasingInFileNames": true\n\t}\n}',
-        documentation: 'TypeScript config',
-        detail: 'Complete tsconfig.json'
-      }
-    ]
-
-    this.registerCompletions('json', jsonCompletions)
-  }
-
-  // React-specific completions
-  private setupReactCompletions() {
-    const reactCompletions = [
-      {
-        label: 'useState',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'const [${1:state}, set${1/(.*)/${1:/capitalize}/}] = useState(${2:initialValue})',
-        documentation: 'React useState hook',
-        detail: 'State management hook'
-      },
-      {
-        label: 'useEffect',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'useEffect(() => {\n\t${1:// effect code}\n}, [${2:dependencies}])',
-        documentation: 'React useEffect hook',
-        detail: 'Side effect hook'
-      },
-      {
-        label: 'useCallback',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'const ${1:callback} = useCallback(() => {\n\t${2:// callback code}\n}, [${3:dependencies}])',
-        documentation: 'React useCallback hook',
-        detail: 'Memoized callback hook'
-      },
-      {
-        label: 'useMemo',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'const ${1:value} = useMemo(() => {\n\t${2:// compute value}\n}, [${3:dependencies}])',
-        documentation: 'React useMemo hook',
-        detail: 'Memoized value hook'
-      },
-      {
-        label: 'useContext',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'const ${1:context} = useContext(${2:Context})',
-        documentation: 'React useContext hook',
-        detail: 'Context consumption hook'
-      },
-      {
-        label: 'useReducer',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'const [${1:state}, ${2:dispatch}] = useReducer(${3:reducer}, ${4:initialState})',
-        documentation: 'React useReducer hook',
-        detail: 'State management with reducer'
-      },
-      {
-        label: 'React component',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'import React from \'react\'\n\ninterface ${1:ComponentName}Props {\n\t${2:prop}: ${3:type}\n}\n\nexport const ${1:ComponentName}: React.FC<${1:ComponentName}Props> = ({ ${2:prop} }) => {\n\treturn (\n\t\t<div>\n\t\t\t${4:// component JSX}\n\t\t</div>\n\t)\n}',
-        documentation: 'React functional component',
-        detail: 'Complete React component with TypeScript'
-      },
-      {
-        label: 'React useState component',
-        kind: this.monaco.languages.CompletionItemKind.Snippet,
-        insertText: 'import React, { useState } from \'react\'\n\nexport const ${1:ComponentName} = () => {\n\tconst [${2:state}, set${2/(.*)/${1:/capitalize}/}] = useState(${3:initialValue})\n\n\treturn (\n\t\t<div>\n\t\t\t${4:// component JSX}\n\t\t</div>\n\t)\n}',
-        documentation: 'React component with useState',
-        detail: 'Functional component with state'
-      }
-    ]
-
-    // Register React completions for JavaScript and TypeScript
-    this.registerCompletions('javascript', reactCompletions)
-    this.registerCompletions('typescript', reactCompletions)
-  }
-
-  // Helper to get JavaScript completions for TypeScript
-  private getJavaScriptCompletions() {
-    return [
-      {
-        label: 'console.log',
-        kind: this.monaco.languages.CompletionItemKind.Method,
-        insertText: 'console.log(${1:value})',
-        documentation: 'Log a value to the console',
-        detail: 'console.log(value: any): void'
-      }
-    ]
-  }
-
-  // Register completions for a language
-  private registerCompletions(language: string, completions: CompletionItem[]) {
-    try {
-      this.monaco.languages.registerCompletionItemProvider(language, {
-        provideCompletionItems: (model: any, position: any) => {
-          const word = model.getWordUntilPosition(position)
-          const range = {
-            startLineNumber: position.lineNumber,
-            endLineNumber: position.lineNumber,
-            startColumn: word.startColumn,
-            endColumn: word.endColumn
-          }
-
-          return {
-            suggestions: completions.map(item => ({
-              label: item.label,
-              kind: item.kind,
-              insertText: item.insertText,
-              documentation: { value: item.documentation || '' },
-              detail: item.detail,
-              insertTextRules: item.insertTextRules || this.monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-              range: range,
-              sortText: item.sortText || item.label,
-              filterText: item.filterText || item.label
-            }))
-          }
-        }
-      })
-    } catch (error) {
-      console.warn(`Failed to register completions for ${language}:`, error)
-    }
-  }
-}
-
-// Initialize the completion system
 export function setupEditorCompletions(monaco: any) {
-  const provider = new EditorCompletionProvider(monaco)
-  provider.initialize()
+  const Kind = monaco.languages.CompletionItemKind
+
+  function register(lang: string, items: { label: string; kind: any; detail?: string }[]) {
+    monaco.languages.registerCompletionItemProvider(lang, {
+      provideCompletionItems(model: any, position: any) {
+        const word = model.getWordUntilPosition(position)
+        const range = {
+          startLineNumber: position.lineNumber,
+          endLineNumber: position.lineNumber,
+          startColumn: word.startColumn,
+          endColumn: word.endColumn,
+        }
+        return {
+          suggestions: items.map(i => ({
+            label: i.label,
+            kind: i.kind,
+            insertText: i.label,
+            detail: i.detail,
+            range,
+          })),
+        }
+      },
+    })
+  }
+
+  // Python
+  register('python', [
+    ...'print input len range type int float str list dict tuple set bool abs all any bin chr dir divmod enumerate eval exec filter format getattr globals hasattr hash hex id isinstance issubclass iter map max min next oct open ord pow repr reversed round setattr slice sorted staticmethod sum super vars zip'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'builtin' })),
+    ...'strip lstrip rstrip split rsplit join replace find rfind index count startswith endswith upper lower title capitalize swapcase isalpha isdigit isalnum isspace encode format_map'.split(' ').map(m => ({ label: m, kind: Kind.Method, detail: 'str' })),
+    ...'append extend insert remove pop clear index count sort reverse copy'.split(' ').map(m => ({ label: m, kind: Kind.Method, detail: 'list' })),
+    ...'keys values items get pop update setdefault clear copy fromkeys'.split(' ').map(m => ({ label: m, kind: Kind.Method, detail: 'dict' })),
+    ...'os.path.join os.path.exists os.path.dirname os.path.basename os.path.abspath os.listdir os.makedirs os.remove os.rename os.getcwd os.environ os.getenv'.split(' ').map(m => ({ label: m, kind: Kind.Method, detail: 'os' })),
+    ...'sys.argv sys.exit sys.path sys.stdin sys.stdout sys.stderr sys.platform sys.version'.split(' ').map(m => ({ label: m, kind: Kind.Property, detail: 'sys' })),
+    ...'json.dumps json.loads json.dump json.load'.split(' ').map(m => ({ label: m, kind: Kind.Method, detail: 'json' })),
+    ...'collections.defaultdict collections.Counter collections.OrderedDict collections.deque collections.namedtuple'.split(' ').map(m => ({ label: m, kind: Kind.Class, detail: 'collections' })),
+    ...'itertools.chain itertools.product itertools.permutations itertools.combinations itertools.count itertools.cycle itertools.repeat'.split(' ').map(m => ({ label: m, kind: Kind.Method, detail: 'itertools' })),
+    ...'functools.reduce functools.partial functools.lru_cache functools.wraps'.split(' ').map(m => ({ label: m, kind: Kind.Method, detail: 'functools' })),
+    ...'Optional Union List Dict Tuple Set Any Callable TypeVar Generic Protocol Literal Final ClassVar'.split(' ').map(m => ({ label: m, kind: Kind.Interface, detail: 'typing' })),
+  ])
+
+  // Go
+  register('go', [
+    ...'fmt.Println fmt.Printf fmt.Sprintf fmt.Fprintf fmt.Errorf fmt.Scanf fmt.Sscanf fmt.Fscanf'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'fmt' })),
+    ...'strings.Contains strings.HasPrefix strings.HasSuffix strings.Join strings.Split strings.Replace strings.ToLower strings.ToUpper strings.TrimSpace strings.Trim strings.Index strings.Count strings.Repeat strings.NewReader strings.Builder'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'strings' })),
+    ...'strconv.Itoa strconv.Atoi strconv.FormatInt strconv.ParseInt strconv.FormatFloat strconv.ParseFloat strconv.FormatBool strconv.ParseBool'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'strconv' })),
+    ...'os.Open os.Create os.ReadFile os.WriteFile os.Remove os.Mkdir os.MkdirAll os.Getenv os.Setenv os.Exit os.Args os.Stdin os.Stdout os.Stderr'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'os' })),
+    ...'io.ReadAll io.Copy io.Reader io.Writer io.EOF io.NopCloser'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'io' })),
+    ...'http.Get http.Post http.ListenAndServe http.HandleFunc http.NewRequest http.NewServeMux http.StatusOK http.MethodGet http.MethodPost'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'net/http' })),
+    ...'json.Marshal json.Unmarshal json.NewEncoder json.NewDecoder json.MarshalIndent'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'encoding/json' })),
+    ...'sync.Mutex sync.RWMutex sync.WaitGroup sync.Once sync.Map sync.Pool'.split(' ').map(m => ({ label: m, kind: Kind.Struct, detail: 'sync' })),
+    ...'context.Background context.TODO context.WithCancel context.WithTimeout context.WithDeadline context.WithValue'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'context' })),
+    ...'errors.New errors.Is errors.As errors.Unwrap errors.Join'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'errors' })),
+    ...'log.Println log.Printf log.Fatal log.Fatalf log.Panic log.SetOutput log.SetFlags'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'log' })),
+    ...'make len cap append copy delete close panic recover new print println'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'builtin' })),
+    ...'sort.Ints sort.Strings sort.Float64s sort.Slice sort.SliceStable sort.Search'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'sort' })),
+    ...'time.Now time.Sleep time.Since time.Until time.After time.NewTicker time.NewTimer time.Duration time.Second time.Minute time.Hour'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'time' })),
+    ...'filepath.Join filepath.Dir filepath.Base filepath.Ext filepath.Abs filepath.Walk filepath.WalkDir filepath.Glob'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'path/filepath' })),
+  ])
+
+  // Rust
+  register('rust', [
+    ...'println! eprintln! format! vec! panic! assert! assert_eq! assert_ne! todo! unimplemented! dbg! cfg! include! include_str! env! concat! stringify!'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'macro' })),
+    ...'String::new String::from String::with_capacity'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'String' })),
+    ...'Vec::new Vec::with_capacity Vec::from'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'Vec' })),
+    ...'push pop len is_empty contains iter iter_mut into_iter capacity clear insert remove retain sort sort_by reverse extend clone'.split(' ').map(m => ({ label: m, kind: Kind.Method, detail: 'Vec/String' })),
+    ...'unwrap unwrap_or unwrap_or_else expect is_some is_none ok err map and_then or_else flatten'.split(' ').map(m => ({ label: m, kind: Kind.Method, detail: 'Option/Result' })),
+    ...'HashMap::new HashMap::with_capacity'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'HashMap' })),
+    ...'insert get get_mut remove contains_key keys values entry'.split(' ').map(m => ({ label: m, kind: Kind.Method, detail: 'HashMap' })),
+    ...'fs::read_to_string fs::write fs::read fs::create_dir fs::create_dir_all fs::remove_file fs::remove_dir fs::metadata fs::read_dir'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'std::fs' })),
+    ...'Path::new PathBuf::new PathBuf::from'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'std::path' })),
+    ...'io::stdin io::stdout io::BufReader io::BufWriter io::Read io::Write'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'std::io' })),
+    ...'thread::spawn thread::sleep thread::current Arc::new Mutex::new RwLock::new'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'std::thread/sync' })),
+    ...'Display Debug Clone Copy Default Iterator From Into AsRef Deref Send Sync'.split(' ').map(m => ({ label: m, kind: Kind.Interface, detail: 'trait' })),
+  ])
+
+  // Bash
+  register('shell', [
+    ...'echo printf read export unset local return exit source eval exec set shopt declare typeset readonly shift getopts trap wait jobs fg bg kill cd pushd popd dirs pwd test'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'builtin' })),
+    ...'grep sed awk find xargs sort uniq wc cut tr head tail cat tee less more diff patch tar gzip gunzip zip unzip curl wget chmod chown chgrp mkdir rmdir rm cp mv ln touch file stat du df mount umount ps top kill pkill pgrep nohup cron crontab ssh scp rsync git docker kubectl make'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'command' })),
+    ...'$HOME $USER $PATH $PWD $SHELL $TERM $EDITOR $LANG $? $$ $! $# $@ $* $0'.split(' ').map(m => ({ label: m, kind: Kind.Variable, detail: 'variable' })),
+  ])
+
+  // Java
+  register('java', [
+    ...'System.out.println System.out.print System.out.printf System.err.println System.exit System.currentTimeMillis System.nanoTime System.getenv System.getProperty System.arraycopy'.split(' ').map(m => ({ label: m, kind: Kind.Method, detail: 'System' })),
+    ...'length charAt substring indexOf lastIndexOf contains startsWith endsWith replace replaceAll split trim strip toUpperCase toLowerCase equals equalsIgnoreCase compareTo isEmpty isBlank format valueOf toCharArray matches join repeat'.split(' ').map(m => ({ label: m, kind: Kind.Method, detail: 'String' })),
+    ...'ArrayList HashMap HashSet LinkedList TreeMap TreeSet LinkedHashMap PriorityQueue ArrayDeque Collections.sort Collections.reverse Collections.shuffle Collections.unmodifiableList Collections.emptyList'.split(' ').map(m => ({ label: m, kind: Kind.Class, detail: 'java.util' })),
+    ...'add remove get set size isEmpty contains containsKey containsValue put putAll keySet values entrySet clear addAll removeAll retainAll iterator stream toArray'.split(' ').map(m => ({ label: m, kind: Kind.Method, detail: 'Collection' })),
+    ...'stream filter map flatMap reduce collect forEach sorted distinct limit skip count anyMatch allMatch noneMatch findFirst findAny toList'.split(' ').map(m => ({ label: m, kind: Kind.Method, detail: 'Stream' })),
+    ...'Collectors.toList Collectors.toSet Collectors.toMap Collectors.joining Collectors.groupingBy Collectors.counting Collectors.partitioningBy'.split(' ').map(m => ({ label: m, kind: Kind.Method, detail: 'Collectors' })),
+    ...'Files.readString Files.writeString Files.readAllLines Files.write Files.exists Files.createFile Files.createDirectory Files.delete Files.copy Files.move Files.list Files.walk Path.of Paths.get'.split(' ').map(m => ({ label: m, kind: Kind.Method, detail: 'java.nio' })),
+    ...'Math.abs Math.max Math.min Math.pow Math.sqrt Math.ceil Math.floor Math.round Math.random Math.PI Math.E Math.log Math.log10'.split(' ').map(m => ({ label: m, kind: Kind.Method, detail: 'Math' })),
+    ...'Integer.parseInt Integer.valueOf Integer.MAX_VALUE Integer.MIN_VALUE Long.parseLong Double.parseDouble Boolean.parseBoolean'.split(' ').map(m => ({ label: m, kind: Kind.Method, detail: 'wrapper' })),
+    ...'Thread.sleep Thread.currentThread Thread.start Thread.join Thread.interrupt'.split(' ').map(m => ({ label: m, kind: Kind.Method, detail: 'Thread' })),
+    ...'Optional.of Optional.ofNullable Optional.empty'.split(' ').map(m => ({ label: m, kind: Kind.Method, detail: 'Optional' })),
+  ])
+
+  // HTML
+  register('html', [
+    ...'div span p a img ul ol li h1 h2 h3 h4 h5 h6 table tr td th thead tbody form input button select option textarea label section article nav header footer main aside figure figcaption video audio canvas svg iframe link meta script style'.split(' ').map(m => ({ label: m, kind: Kind.Property, detail: 'element' })),
+    ...'class id style src href alt title type name value placeholder disabled checked readonly required action method target rel media content'.split(' ').map(m => ({ label: m, kind: Kind.Property, detail: 'attribute' })),
+  ])
+
+  // CSS
+  const cssProps = 'display position top right bottom left width height margin padding border background color font-size font-weight font-family text-align line-height overflow z-index opacity visibility cursor transition transform animation flex justify-content align-items align-self flex-direction flex-wrap gap grid grid-template-columns grid-template-rows border-radius box-shadow text-decoration white-space word-break max-width min-width max-height min-height object-fit pointer-events user-select'.split(' ').map(m => ({ label: m, kind: Kind.Property, detail: 'property' }))
+  register('css', cssProps)
+  register('scss', cssProps)
+
+  // Svelte
+  register('svelte', [
+    ...'onMount onDestroy beforeUpdate afterUpdate tick createEventDispatcher setContext getContext getAllContexts'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'svelte' })),
+    ...'writable readable derived get'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'svelte/store' })),
+    ...'fade fly slide scale blur draw crossfade'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'svelte/transition' })),
+    ...'tweened spring'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'svelte/motion' })),
+    ...'goto invalidate invalidateAll'.split(' ').map(m => ({ label: m, kind: Kind.Function, detail: 'sveltekit' })),
+  ])
 }

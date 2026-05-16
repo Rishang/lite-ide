@@ -3,6 +3,7 @@
 import { useEffect, useRef, Suspense } from 'react'
 import { LazyMonacoEditor, LoadingScreen } from './MonacoEditor'
 import { getLanguageFromPath } from '@/lib/common'
+import { connectLsp, notifyLspChange } from '@/lib/lsp-client'
 
 export interface MarkerData {
   severity: number   // monaco.MarkerSeverity: Error=8, Warning=4, Info=2, Hint=1
@@ -31,8 +32,24 @@ export function Editor({ content, path, language, theme = 'atom-one-dark', targe
   const editorRef = useRef<any>(null)
   const markerDisposableRef = useRef<{ dispose: () => void } | null>(null)
   const markerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lspDisconnectRef = useRef<(() => void) | null>(null)
+  const versionRef = useRef(1)
+  const monacoRef = useRef<any>(null)
   const onMarkersChangeRef = useRef(onMarkersChange)
   onMarkersChangeRef.current = onMarkersChange
+
+  // Connect/reconnect LSP when path changes (not in onMount — onMount only fires once)
+  useEffect(() => {
+    if (!monacoRef.current) return
+    lspDisconnectRef.current?.()
+    versionRef.current = 1
+    lspDisconnectRef.current = connectLsp(monacoRef.current, path, getLanguage(path), content)
+    return () => {
+      lspDisconnectRef.current?.()
+      lspDisconnectRef.current = null
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [path])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -72,6 +89,8 @@ export function Editor({ content, path, language, theme = 'atom-one-dark', targe
     return () => {
       markerDisposableRef.current?.dispose()
       markerDisposableRef.current = null
+      lspDisconnectRef.current?.()
+      lspDisconnectRef.current = null
       if (markerTimeoutRef.current) {
         clearTimeout(markerTimeoutRef.current)
         markerTimeoutRef.current = null
@@ -87,10 +106,20 @@ export function Editor({ content, path, language, theme = 'atom-one-dark', targe
             height="100%"
             defaultLanguage={getLanguage(path)}
             value={content}
-            onChange={(value: string) => onChange(value || '')}
+            onChange={(value: string) => {
+              onChange(value || '')
+              versionRef.current++
+              notifyLspChange(path, getLanguage(path), value || '', versionRef.current)
+            }}
             onMount={(editor: any, monaco: any) => {
               editorRef.current = editor
+              monacoRef.current = monaco
               markerDisposableRef.current?.dispose()
+
+              // Trigger LSP connection now that monaco is available
+              lspDisconnectRef.current?.()
+              versionRef.current = 1
+              lspDisconnectRef.current = connectLsp(monaco, path, getLanguage(path), content)
 
               // Emit markers (diagnostics) whenever they change for this model
               const emitMarkers = () => {

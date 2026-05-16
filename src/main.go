@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 
+	"lite-ide/internal/lsp"
 	"lite-ide/internal/terminal"
 	"lite-ide/internal/web"
 )
@@ -19,6 +20,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/api/", apiH)
 	mux.Handle("/terminal", termH)
+	mux.Handle("/lsp", lsp.Handler())
 	mux.Handle("/", uiH)
 
 	port := ":3000"

@@ -11,6 +11,7 @@ tasks:
     dir: ui
     cmds:
       - pnpm install
+      - node scripts/bundle-types.js
       - pnpm build
 
   go:build:

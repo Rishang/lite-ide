@@ -199,13 +199,46 @@ const LazyMonacoEditor = React.lazy(() =>
               'scrollbarSlider.background': '#5c637066',
               'scrollbarSlider.hoverBackground': '#5c637099',
               'scrollbarSlider.activeBackground': '#5c6370cc',
+              'editor.border': '#1f2329',
+              'editorGroup.border': '#1f2329',
+              'editorGroupHeader.tabsBackground': '#191d23',
+              'sideBar.border': '#1f2329',
             },
           })
           monaco.editor.setTheme('atom-one-dark')
           setupDockerfileLanguage(monaco)
           setupSvelteLanguage(monaco)
           
-          // Enhanced auto-completion setup
+          // Configure TypeScript/JavaScript compiler options for Node.js
+          const tsDefaults = monaco.languages.typescript.typescriptDefaults
+          const jsDefaults = monaco.languages.typescript.javascriptDefaults
+          const compilerOptions = {
+            target: monaco.languages.typescript.ScriptTarget.ESNext,
+            module: monaco.languages.typescript.ModuleKind.ESNext,
+            moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+            allowNonTsExtensions: true,
+            allowJs: true,
+            jsx: monaco.languages.typescript.JsxEmit.React,
+            esModuleInterop: true,
+            strict: true,
+          }
+          tsDefaults.setCompilerOptions(compilerOptions)
+          jsDefaults.setCompilerOptions(compilerOptions)
+          tsDefaults.setDiagnosticsOptions({ noSemanticValidation: false, noSyntaxValidation: false })
+          jsDefaults.setDiagnosticsOptions({ noSemanticValidation: false, noSyntaxValidation: false })
+
+          // Lazily load type definitions for Node.js and React
+          fetch('/types.json')
+            .then(r => r.json())
+            .then((libs: { path: string; content: string }[]) => {
+              for (const lib of libs) {
+                tsDefaults.addExtraLib(lib.content, lib.path)
+                jsDefaults.addExtraLib(lib.content, lib.path)
+              }
+            })
+            .catch(() => {})
+
+          // Static completions for non-TS/JS languages
           try {
             setupEditorCompletions(monaco)
           } catch (error) {

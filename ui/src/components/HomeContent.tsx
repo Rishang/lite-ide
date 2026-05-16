@@ -36,7 +36,7 @@ const TerminalPanel = dynamic(
   },
 );
 
-const DEFAULT_SIDEBAR_WIDTH = 300;
+const DEFAULT_SIDEBAR_WIDTH = 200;
 
 export function HomeContent() {
   const [tree, setTree] = useState<FileNode[]>([]);
@@ -517,9 +517,7 @@ export function HomeContent() {
             <TabBar
               tabs={Array.from(tabs.keys())}
               activeTab={activeTab}
-              dirtyTabs={Array.from(tabs.entries())
-                .filter(([_, tab]) => tab.dirty)
-                .map(([path]) => path)}
+              dirtyTabs={[]}
               onTabSelect={setActiveTab}
               onTabClose={closeTab}
             />
