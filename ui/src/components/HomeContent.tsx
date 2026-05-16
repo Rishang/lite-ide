@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import {
-  Files,
+  FolderClosed,
   Terminal as TerminalIcon,
-  Search,
+  SearchCode,
   ChevronRight,
   PanelBottomClose,
   PanelBottom,
@@ -418,9 +418,9 @@ export function HomeContent() {
     <div className="flex h-screen bg-[#1f2329] text-white overflow-hidden">
       {/* Activity Bar */}
       {config.showEditor && (
-        <div className="w-12 bg-[#191d23] flex flex-col items-center py-1 flex-shrink-0 border-r border-[#191d23]">
+        <div className="w-9 bg-[#191d23] flex flex-col items-center py-1 flex-shrink-0 border-r border-[#191d23]">
           <button
-            className={`w-12 h-12 flex items-center justify-center transition-colors relative ${activePanel === "files"
+            className={`w-9 h-9 flex items-center justify-center transition-colors relative ${activePanel === "files"
               ? "text-white"
               : "text-[#5c6370] hover:text-white"
               }`}
@@ -442,10 +442,10 @@ export function HomeContent() {
             {activePanel === "files" && !isExplorerMinimized && (
               <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-white" />
             )}
-            <Files className="w-6 h-6" />
+            <FolderClosed className="w-5 h-5" />
           </button>
           <button
-            className={`w-12 h-12 flex items-center justify-center transition-colors relative ${activePanel === "search"
+            className={`w-9 h-9 flex items-center justify-center transition-colors relative ${activePanel === "search"
               ? "text-white"
               : "text-[#5c6370] hover:text-white"
               }`}
@@ -467,7 +467,7 @@ export function HomeContent() {
             {activePanel === "search" && !isExplorerMinimized && (
               <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-white" />
             )}
-            <Search className="w-6 h-6" />
+            <SearchCode className="w-5 h-5" />
           </button>
         </div>
       )}
@@ -583,50 +583,21 @@ export function HomeContent() {
             minHeight={32}
             maxHeight={windowHeight * 0.7}
             isMaximized={isTerminalMaximized}
+            isMinimized={isTerminalMinimized}
             className={`
-              ${isTerminalMinimized ? "hidden" : ""}
               ${isTerminalMaximized ? "flex-1" : ""}
             `}
-            showResizeHandle={config.showEditor}
+            showResizeHandle={config.showEditor && !isTerminalMinimized}
           >
             <TerminalPanel
               onMaximize={handleTerminalMaximize}
-              onMinimize={() => setIsTerminalMinimized(true)}
-              markers={markers}
-              activeFilePath={activeTab}
+              onMinimize={handleTerminalMinimizeToggle}
+              isMinimized={isTerminalMinimized}
             />
           </ResizablePanel>
         )}
 
-        {/* Status Bar */}
-        {config.showEditor && (
-          <div className="h-[18px] bg-[#61afef] flex items-center justify-between px-3 text-xs text-white flex-shrink-0 select-none">
-            <div className="flex items-center gap-3">
-              {activeTab && (
-                <>
-                  <span>
-                    {getLanguageFromPath(activeTab).charAt(0).toUpperCase() +
-                      getLanguageFromPath(activeTab).slice(1)}
-                  </span>
-                  <span>UTF-8</span>
-                  <span>LF</span>
-                </>
-              )}
-              {/* Minimize/restore toggle — always resets maximize state */}
-              <button
-                className="flex items-center gap-1 hover:bg-white/20 px-1 rounded transition-colors"
-                onClick={handleTerminalMinimizeToggle}
-                title="Toggle Terminal (Ctrl+`)"
-              >
-                {isTerminalMinimized ? (
-                  <PanelBottom className="w-3 h-3" />
-                ) : (
-                  <PanelBottomClose className="w-3 h-3" />
-                )}
-              </button>
-            </div>
-          </div>
-        )}
+
       </div>
     </div>
   );

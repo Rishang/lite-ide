@@ -47,7 +47,7 @@ export function Terminal() {
       },
       fontSize: 14,
       fontFamily: 'JetBrains Mono, Menlo, Monaco, "Ubuntu Mono", monospace',
-      lineHeight: 1.25,
+      lineHeight: 1,
       letterSpacing: 0,
       allowTransparency: false,
       scrollback: 5000,

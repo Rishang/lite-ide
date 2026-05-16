@@ -639,7 +639,25 @@ export function FileExplorer({
       {/* Header */}
       <div className="h-[35px] border-b border-[#303641] bg-[#191d23] flex items-center justify-between px-4 flex-shrink-0 group/header">
         {!isMinimized && (
-          <span className="text-[11px] font-semibold tracking-wider text-[#abb2bf] uppercase select-none">Explorer</span>
+          isPathEditing ? (
+            <input
+              ref={pathInputRef}
+              className="text-[11px] font-semibold text-[#abb2bf] bg-[#1e2228] border border-[#303641] rounded px-1 py-0.5 outline-none focus:border-[#528bff] w-full mr-2"
+              value={pathInput}
+              onChange={(e) => setPathInput(e.target.value)}
+              onKeyDown={handlePathKeyDown}
+              onBlur={handlePathChange}
+              autoFocus
+            />
+          ) : (
+            <span
+              className="text-[11px] font-semibold text-[#abb2bf] select-none cursor-pointer truncate mr-2 hover:text-[#d4d8e0]"
+              title={currentPath}
+              onClick={() => setIsPathEditing(true)}
+            >
+              {currentPath === '.' ? 'Explorer' : currentPath}
+            </span>
+          )
         )}
         <div className="flex gap-0.5 opacity-0 group-hover/header:opacity-100 transition-opacity">
           {!isMinimized && (

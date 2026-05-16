@@ -10,6 +10,7 @@ interface ResizablePanelProps {
   className?: string;
   showResizeHandle?: boolean;
   isMaximized?: boolean;
+  isMinimized?: boolean;
 }
 
 export function ResizablePanel({
@@ -20,6 +21,7 @@ export function ResizablePanel({
   className = "",
   showResizeHandle = true,
   isMaximized = false,
+  isMinimized = false,
 }: ResizablePanelProps) {
   const [height, setHeight] = useState(defaultHeight);
   const [isResizing, setIsResizing] = useState(false);
@@ -54,7 +56,7 @@ export function ResizablePanel({
     <div
       ref={panelRef}
       className={`flex flex-col ${className}`}
-      style={isMaximized ? undefined : { height: `${height}px` }}
+      style={isMaximized ? undefined : isMinimized ? { height: 'auto' } : { height: `${height}px` }}
     >
       {/* Resize sash — matches VS Code's 4 px hit-target with a 1 px visual line */}
       {showResizeHandle && !isMaximized && (
