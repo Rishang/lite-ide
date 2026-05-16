@@ -21,8 +21,8 @@ A simple tiny web-based IDE built with Go backend and TypeScript/React frontend,
 
 ### Prerequisites
 
-- Go 1.22+
-- Node.js 18+
+- Go 1.24+
+- Node.js 22+
 - pnpm
 - Task (optional, for task runner)
 
@@ -50,10 +50,10 @@ task go:dev
 
 ```bash
 # Build Docker image
-docker build -t nano-ide .
+docker build -t rishang/nano-ide .
 
 # Run container
-docker run -p 3000:3000 nano-ide
+docker run -p 3000:3000 rishang/nano-ide
 ```
 
 ### Development Commands
@@ -83,6 +83,7 @@ rm -rf ui/node_modules
 - `task go:build` - Build single binary with embedded UI
 - `task go:dev` - Run the built binary
 - `task build` - Build the project (ui:build + go:build)
+- `task docker:push` - Build and push Docker image
 
 ## Configuration
 
@@ -119,15 +120,15 @@ NEXT_PUBLIC_SHOW_TERMINAL=true
 
 ## Technologies
 
-- **Backend**: Go 1.22, net/http, WebSocket
-- **Frontend**: Next.js 14, React 18, TypeScript
+- **Backend**: Go 1.24, net/http, WebSocket
+- **Frontend**: Next.js 16, React 19, TypeScript
 - **Editor**: Monaco Editor
-- **Styling**: Tailwind CSS
-- **Icons**: Lucide React
+- **Styling**: Tailwind CSS 4
+- **Icons**: Lucide React, Font Awesome
 - **Terminal**: xterm.js
 - **Package Manager**: pnpm
 - **Task Runner**: Task
 
 ## License
 
-MIT 
+MIT
