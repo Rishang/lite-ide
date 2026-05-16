@@ -1,18 +1,20 @@
 <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background circle -->
-  <circle cx="16" cy="16" r="15" fill="#1e1e1e" stroke="#3a3a3a" stroke-width="2"/>
-  
-  <!-- Code brackets -->
-  <path d="M10 8L6 16L10 24" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M22 8L26 16L22 24" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  
+  <!-- Editor window -->
+  <rect x="2" y="4" width="28" height="24" rx="3" fill="#1e1e2e" stroke="#45475a" stroke-width="1.5"/>
+  <!-- Title bar -->
+  <rect x="2" y="4" width="28" height="6" rx="3" fill="#313244"/>
+  <circle cx="7" cy="7" r="1.2" fill="#f38ba8"/>
+  <circle cx="11" cy="7" r="1.2" fill="#f9e2af"/>
+  <circle cx="15" cy="7" r="1.2" fill="#a6e3a1"/>
   <!-- Code lines -->
-  <rect x="12" y="12" width="8" height="2" rx="1" fill="#10b981"/>
-  <rect x="12" y="16" width="6" height="2" rx="1" fill="#f59e0b"/>
-  <rect x="12" y="20" width="7" height="2" rx="1" fill="#ef4444"/>
-  
-  <!-- Terminal cursor -->
-  <rect x="8" y="26" width="2" height="2" fill="#60a5fa">
+  <rect x="6" y="13" width="4" height="1.5" rx="0.75" fill="#cba6f7"/>
+  <rect x="12" y="13" width="10" height="1.5" rx="0.75" fill="#89b4fa"/>
+  <rect x="6" y="17" width="6" height="1.5" rx="0.75" fill="#f38ba8"/>
+  <rect x="14" y="17" width="8" height="1.5" rx="0.75" fill="#a6e3a1"/>
+  <rect x="6" y="21" width="3" height="1.5" rx="0.75" fill="#cba6f7"/>
+  <rect x="11" y="21" width="12" height="1.5" rx="0.75" fill="#f9e2af"/>
+  <!-- Cursor -->
+  <rect x="6" y="24.5" width="1.5" height="2" fill="#89b4fa">
     <animate attributeName="opacity" values="1;0;1" dur="1s" repeatCount="indefinite"/>
   </rect>
-</svg> 
+</svg>
