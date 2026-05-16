@@ -101,7 +101,7 @@ export function Editor({ content, path, language, theme = 'atom-one-dark', targe
   return (
     <div className="h-full w-full min-h-0 min-w-0 flex-1 bg-[#1f2329]">
       <Suspense fallback={<LoadingScreen />}>
-        <div className="h-full w-full pb-8">
+        <div className="h-full w-full">
           <LazyMonacoEditor
             height="100%"
             defaultLanguage={getLanguage(path)}
