@@ -29,7 +29,7 @@ export function TabBar({ tabs, activeTab, dirtyTabs, onTabSelect, onTabClose }: 
           <div
             key={tab}
             className={cn(
-              'flex items-center px-3 py-[6px] cursor-pointer text-[13px] min-w-0 relative border-r border-[#191d23] select-none group',
+              'flex items-center px-3 py-[6px] cursor-pointer text-[13px] min-w-0 relative select-none group',
               isActive
                 ? 'bg-[#1f2329] text-white'
                 : 'bg-[#252a32] text-[#828997] hover:bg-[#252a32]/80'

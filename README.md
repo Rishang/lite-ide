@@ -1,4 +1,4 @@
-# Lite IDE
+# NanoIDE
 
 A simple tiny web-based IDE built with Go backend and TypeScript/React frontend, packaged as a single binary.
 
@@ -50,10 +50,10 @@ task go:dev
 
 ```bash
 # Build Docker image
-docker build -t lite-ide .
+docker build -t nano-ide .
 
 # Run container
-docker run -p 3000:3000 lite-ide
+docker run -p 3000:3000 nano-ide
 ```
 
 ### Development Commands

@@ -78,7 +78,7 @@ export function TerminalPanel({ onMaximize, onMinimize, onClose, isMaximized, is
     <div className="h-full flex flex-col bg-[#1f2329] select-none font-['Segoe_UI',system-ui,sans-serif] border-t border-[#111318]">
 
       {/* ── Top Tab Bar ──────────────────────────────────────────────────── */}
-      <div className="flex items-stretch justify-between bg-[#191d23] border-b border-[#111318] shrink-0 h-[26px]">
+      <div className="flex items-stretch justify-between bg-[#191d23] border-b border-[#1a1d23] shrink-0 h-[26px]">
 
         {/* Section tabs */}
         <div className="flex items-stretch overflow-x-auto scrollbar-none pl-2">

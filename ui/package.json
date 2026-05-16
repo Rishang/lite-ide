@@ -1,5 +1,5 @@
 {
-  "name": "lite-ide-ui",
+  "name": "nano-ide",
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@8.15.0",

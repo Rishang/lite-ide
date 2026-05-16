@@ -1,4 +1,4 @@
-// Configuration for the Lite IDE UI
+// Configuration for the NanoIDE UI
 export function getWsHost() {
   if (typeof window !== 'undefined') {
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';

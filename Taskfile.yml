@@ -29,7 +29,7 @@ tasks:
         cp -r ../ui/out/* $BUILD_DIR
       - |
         if [ "$CI" = "true" ]; then
-          BINARY_NAME="lite-ide-{{.GOOS | default "linux"}}-{{.GOARCH | default "amd64"}}"
+          BINARY_NAME="nano-ide-{{.GOOS | default "linux"}}-{{.GOARCH | default "amd64"}}"
         else
           BINARY_NAME="ide"
         fi
@@ -54,5 +54,5 @@ tasks:
   docker:push:
     desc: Push the docker image
     cmds:
-      - docker build -t rishang/lite-ide .
-      - docker push rishang/lite-ide
+      - docker build -t rishang/nano-ide .
+      - docker push rishang/nano-ide

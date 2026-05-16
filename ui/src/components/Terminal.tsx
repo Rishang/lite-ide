@@ -12,7 +12,6 @@ export function Terminal() {
   const terminal = useRef<XTerminal | null>(null)
   const fitAddon = useRef<FitAddon | null>(null)
   const socketRef = useRef<WebSocket | null>(null)
-  const resizeObserver = useRef<ResizeObserver | null>(null)
   const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
@@ -71,35 +70,6 @@ export function Terminal() {
 
     // Focus the terminal after opening
     term.focus()
-
-    // ResizeObserver to fit terminal on container resize
-    if (termRef.current) {
-      resizeObserver.current = new ResizeObserver(() => {
-        // Debounce resize events and check if terminal is visible
-        if (resizeTimeoutRef.current) {
-          clearTimeout(resizeTimeoutRef.current)
-        }
-
-        resizeTimeoutRef.current = setTimeout(() => {
-          if (termRef.current && termRef.current.offsetParent !== null && fitAddon.current) {
-            try {
-              // Terminal is visible, safe to resize
-              fitAddon.current.fit()
-              if (socketRef.current?.readyState === WebSocket.OPEN) {
-                socketRef.current.send(JSON.stringify({
-                  type: 'resize',
-                  cols: term.cols,
-                  rows: term.rows
-                }))
-              }
-            } catch (error) {
-              console.warn('Terminal resize error:', error)
-            }
-          }
-        }, 100)
-      })
-      resizeObserver.current.observe(termRef.current)
-    }
 
     const handleResize = () => {
       // Debounce window resize events
@@ -214,10 +184,6 @@ export function Terminal() {
       if (termRef.current) {
         termRef.current.removeEventListener('click', handleClick)
         delete (termRef.current as any).focusTerminal
-      }
-      if (resizeObserver.current && termRef.current) {
-        resizeObserver.current.unobserve(termRef.current)
-        resizeObserver.current.disconnect()
       }
       term.dispose()
       terminal.current = null

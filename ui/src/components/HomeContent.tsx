@@ -194,7 +194,10 @@ export function HomeContent() {
         setExplorerWidth(newWidth);
       }
     };
-    const handleMouseUp = () => setIsResizing(false);
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      window.dispatchEvent(new Event("resize"));
+    };
 
     if (isResizing) {
       document.addEventListener("mousemove", handleMouseMove, {
@@ -524,7 +527,7 @@ export function HomeContent() {
 
             {/* Breadcrumbs */}
             {activeTab && (
-              <div className="flex items-center px-4 py-1 bg-[#1f2329] border-b border-[#191d23] text-xs">
+              <div className="flex items-center px-4 py-1 bg-[#1f2329] text-xs">
                 {getBreadcrumbs().map((part, index, arr) => (
                   <span key={index} className="flex items-center">
                     <span className="text-[#abb2bf] hover:text-white cursor-pointer hover:underline">
@@ -564,7 +567,7 @@ export function HomeContent() {
               ) : (
                 <div className="h-full flex flex-col items-center justify-center text-[#5c6370]">
                   <div className="text-6xl font-light mb-4 opacity-20">⌨</div>
-                  <div className="text-lg font-light">Lite IDE</div>
+                  <div className="text-lg font-light">NanoIDE</div>
                   <div className="text-sm mt-2 opacity-60">
                     Open a file from the explorer to start editing
                   </div>

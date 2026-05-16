@@ -15,27 +15,27 @@ jobs:
           - name: linux-amd64
             goos: linux
             goarch: amd64
-            binary_name: lite-ide-linux-amd64
+            binary_name: nano-ide-linux-amd64
           - name: linux-arm64
             goos: linux
             goarch: arm64
-            binary_name: lite-ide-linux-arm64
+            binary_name: nano-ide-linux-arm64
           - name: darwin-amd64
             goos: darwin
             goarch: amd64
-            binary_name: lite-ide-darwin-amd64
+            binary_name: nano-ide-darwin-amd64
           - name: darwin-arm64
             goos: darwin
             goarch: arm64
-            binary_name: lite-ide-darwin-arm64
+            binary_name: nano-ide-darwin-arm64
           - name: windows-amd64
             goos: windows
             goarch: amd64
-            binary_name: lite-ide-windows-amd64.exe
+            binary_name: nano-ide-windows-amd64.exe
           - name: windows-arm64
             goos: windows
             goarch: arm64
-            binary_name: lite-ide-windows-arm64.exe
+            binary_name: nano-ide-windows-arm64.exe
 
     steps:
       - name: Checkout code
@@ -84,37 +84,37 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: lite-ide-linux-amd64
+          name: nano-ide-linux-amd64
           path: dist/
 
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: lite-ide-linux-arm64
+          name: nano-ide-linux-arm64
           path: dist/
 
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: lite-ide-darwin-amd64
+          name: nano-ide-darwin-amd64
           path: dist/
 
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: lite-ide-darwin-arm64
+          name: nano-ide-darwin-arm64
           path: dist/
 
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: lite-ide-windows-amd64.exe
+          name: nano-ide-windows-amd64.exe
           path: dist/
 
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: lite-ide-windows-arm64.exe
+          name: nano-ide-windows-arm64.exe
           path: dist/
 
       - name: List downloaded files

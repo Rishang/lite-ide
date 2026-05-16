@@ -100,7 +100,7 @@ func handleFileWatch(w http.ResponseWriter, r *http.Request) {
 	// Get root path from query parameter or environment variable
 	root := r.URL.Query().Get("root")
 	if root == "" {
-		root = os.Getenv("LITE_IDE_ROOT")
+		root = os.Getenv("NANO_IDE_ROOT")
 	}
 	if root == "" {
 		cwd, err := os.Getwd()

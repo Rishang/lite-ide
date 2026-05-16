@@ -35,7 +35,10 @@ export function ResizablePanel({
       setHeight(newHeight);
     };
 
-    const handleMouseUp = () => setIsResizing(false);
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      window.dispatchEvent(new Event("resize"));
+    };
 
     if (isResizing) {
       document.addEventListener("mousemove", handleMouseMove);

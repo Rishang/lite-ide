@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Lite IDE',
+  title: 'NanoIDE',
   description: 'A modern web-based IDE with file explorer, code editor, and terminal',
   icons: {
     icon: '/favicon.svg',
