@@ -13,6 +13,7 @@ export function Terminal() {
   const fitAddon = useRef<FitAddon | null>(null)
   const socketRef = useRef<WebSocket | null>(null)
   const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const lastPtySizeRef = useRef<{ cols: number; rows: number } | null>(null)
 
   useEffect(() => {
     if (!termRef.current || terminal.current) {
@@ -61,40 +62,77 @@ export function Terminal() {
     term.loadAddon(new WebLinksAddon())
     term.open(termRef.current)
 
-    // Delay fit to ensure container is properly sized
-    setTimeout(() => {
-      if (termRef.current && termRef.current.offsetParent !== null) {
-        fit.fit()
+    const sendPtyResize = (cols: number, rows: number) => {
+      if (cols <= 0 || rows <= 0) {
+        return
       }
-    }, 100)
+
+      const lastSize = lastPtySizeRef.current
+      if (lastSize?.cols === cols && lastSize?.rows === rows) {
+        return
+      }
+
+      if (socketRef.current?.readyState !== WebSocket.OPEN) {
+        return
+      }
+
+      lastPtySizeRef.current = { cols, rows }
+      socketRef.current.send(JSON.stringify({ type: 'resize', cols, rows }))
+    }
+
+    const fitTerminal = () => {
+      if (!termRef.current || termRef.current.offsetParent === null || !fitAddon.current) {
+        return
+      }
+
+      if (termRef.current.clientWidth === 0 || termRef.current.clientHeight === 0) {
+        return
+      }
+
+      try {
+        const dimensions = fitAddon.current.proposeDimensions()
+        if (!dimensions) {
+          return
+        }
+
+        const lastSize = lastPtySizeRef.current
+        if (!lastSize) {
+          term.resize(dimensions.cols, dimensions.rows)
+          sendPtyResize(dimensions.cols, dimensions.rows)
+        } else if (lastSize.rows !== dimensions.rows) {
+          term.resize(lastSize.cols, dimensions.rows)
+          sendPtyResize(lastSize.cols, dimensions.rows)
+        } else if (term.rows !== dimensions.rows || term.cols !== lastSize.cols) {
+          term.resize(lastSize.cols, dimensions.rows)
+        }
+      } catch (error) {
+        console.warn('Terminal resize error:', error)
+      }
+    }
+
+    const scheduleFit = (delay = 0) => {
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current)
+      }
+
+      resizeTimeoutRef.current = setTimeout(fitTerminal, delay)
+    }
+
+    // Delay fit to ensure container is properly sized
+    scheduleFit(100)
 
     // Focus the terminal after opening
     term.focus()
 
     const handleResize = () => {
-      // Debounce window resize events
-      if (resizeTimeoutRef.current) {
-        clearTimeout(resizeTimeoutRef.current)
-      }
-
-      resizeTimeoutRef.current = setTimeout(() => {
-        if (termRef.current && termRef.current.offsetParent !== null && fitAddon.current) {
-          try {
-            fitAddon.current.fit()
-            if (socketRef.current?.readyState === WebSocket.OPEN) {
-              socketRef.current.send(JSON.stringify({
-                type: 'resize',
-                cols: term.cols,
-                rows: term.rows
-              }))
-            }
-          } catch (error) {
-            console.warn('Terminal resize error:', error)
-          }
-        }
-      }, 100)
+      scheduleFit(100)
     }
     window.addEventListener('resize', handleResize)
+
+    const resizeObserver = new ResizeObserver(() => {
+      scheduleFit(50)
+    })
+    resizeObserver.observe(termRef.current)
 
     // Use config WebSocket host for terminal connection
     const url = `${config.wsHost}/terminal`
@@ -104,8 +142,7 @@ export function Terminal() {
 
     socket.onopen = () => {
       // term.writeln('Connected to terminal')
-      const initialSize = { cols: term.cols, rows: term.rows }
-      socket.send(JSON.stringify({ type: 'resize', ...initialSize }))
+      sendPtyResize(term.cols, term.rows)
     }
 
     socket.onmessage = (event) => {
@@ -138,12 +175,6 @@ export function Terminal() {
       }
     })
 
-    term.onResize((size) => {
-      if (socketRef.current?.readyState === WebSocket.OPEN) {
-        socketRef.current.send(JSON.stringify({ type: 'resize', ...size }))
-      }
-    })
-
     // Re-focus when clicked, but only if not already focused
     const handleClick = () => {
       const textarea = termRef.current?.querySelector('textarea') as HTMLTextAreaElement
@@ -169,6 +200,7 @@ export function Terminal() {
       if (textarea && document.activeElement !== textarea) {
         term.focus()
       }
+      scheduleFit(0)
     }
     window.addEventListener('focusTerminal', handleFocusTerminal)
 
@@ -179,6 +211,7 @@ export function Terminal() {
       if (resizeTimeoutRef.current) {
         clearTimeout(resizeTimeoutRef.current)
       }
+      resizeObserver.disconnect()
       window.removeEventListener('resize', handleResize)
       window.removeEventListener('focusTerminal', handleFocusTerminal)
       if (termRef.current) {
