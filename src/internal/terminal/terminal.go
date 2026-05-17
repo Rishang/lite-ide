@@ -67,19 +67,19 @@ func New() (http.Handler, error) {
 				log.Printf("PTY read goroutine exiting")
 			}()
 
-			for {
-				buf := make([]byte, 8192)
-				n, err := tty.Read(buf)
-				if err != nil {
-					log.Printf("failed to read from pty: %v", err)
-					conn.WriteMessage(websocket.CloseMessage, []byte{})
-					return
-				}
-				if err := conn.WriteMessage(websocket.BinaryMessage, buf[:n]); err != nil {
-					log.Printf("failed to write to websocket: %v", err)
-					return
-				}
+		buf := make([]byte, 32*1024)
+		for {
+			n, err := tty.Read(buf)
+			if err != nil {
+				log.Printf("failed to read from pty: %v", err)
+				conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
 			}
+			if err := conn.WriteMessage(websocket.BinaryMessage, buf[:n]); err != nil {
+				log.Printf("failed to write to websocket: %v", err)
+				return
+			}
+		}
 		}()
 
 		// Read from websocket and write to tty

@@ -31,7 +31,8 @@ export function ResizablePanel({
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing || !panelRef.current) return;
       const rect = panelRef.current.getBoundingClientRect();
-      const newHeight = Math.max(minHeight, Math.min(maxHeight, rect.bottom - e.clientY));
+      const clampedMax = Math.min(maxHeight, window.innerHeight * 0.9);
+      const newHeight = Math.max(minHeight, Math.min(clampedMax, rect.bottom - e.clientY));
       setHeight(newHeight);
     };
 

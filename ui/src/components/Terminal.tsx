@@ -3,11 +3,12 @@
 import { useEffect, useRef } from 'react'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
+import { WebglAddon } from '@xterm/addon-webgl'
 import { Terminal as XTerminal } from '@xterm/xterm'
 import '@xterm/xterm/css/xterm.css'
 import { config } from '@/utils/config'
 
-export function Terminal() {
+export function Terminal({ id }: { id: string }) {
   const termRef = useRef<HTMLDivElement | null>(null)
   const terminal = useRef<XTerminal | null>(null)
   const fitAddon = useRef<FitAddon | null>(null)
@@ -62,6 +63,15 @@ export function Terminal() {
     term.loadAddon(new WebLinksAddon())
     term.open(termRef.current)
 
+    // Use WebGL renderer for better performance, fall back to canvas if unavailable
+    try {
+      const webgl = new WebglAddon()
+      webgl.onContextLoss(() => { webgl.dispose() })
+      term.loadAddon(webgl)
+    } catch (e) {
+      console.warn('WebGL addon failed, using canvas renderer:', e)
+    }
+
     // Keep PTY resize messages deduped so width changes do not spam the shell.
     const sendPtyResize = (cols: number, rows: number) => {
       if (cols <= 0 || rows <= 0) {
@@ -81,8 +91,6 @@ export function Terminal() {
       socketRef.current.send(JSON.stringify({ type: 'resize', cols, rows }))
     }
 
-    // Fit the visible terminal to its container, but keep the backend columns stable
-    // after the first attach so prompt redraws do not spill duplicate lines into scrollback.
     const fitTerminal = () => {
       if (!termRef.current || termRef.current.offsetParent === null || !fitAddon.current) {
         return
@@ -93,23 +101,8 @@ export function Terminal() {
       }
 
       try {
-        const dimensions = fitAddon.current.proposeDimensions()
-        if (!dimensions) {
-          return
-        }
-
-        const lastSize = lastPtySizeRef.current
-        if (!lastSize) {
-          // Initial attach: sync both xterm and the PTY to the live container size.
-          term.resize(dimensions.cols, dimensions.rows)
-          sendPtyResize(dimensions.cols, dimensions.rows)
-        } else if (lastSize.rows !== dimensions.rows) {
-          // Height changes are safe to forward; width changes stay local to xterm.
-          term.resize(lastSize.cols, dimensions.rows)
-          sendPtyResize(lastSize.cols, dimensions.rows)
-        } else if (term.rows !== dimensions.rows || term.cols !== lastSize.cols) {
-          term.resize(lastSize.cols, dimensions.rows)
-        }
+        fitAddon.current.fit()
+        sendPtyResize(term.cols, term.rows)
       } catch (error) {
         console.warn('Terminal resize error:', error)
       }
@@ -202,7 +195,8 @@ export function Terminal() {
     }
 
     // Listen for custom focus event
-    const handleFocusTerminal = () => {
+    const handleFocusTerminal = (e: Event) => {
+      if ((e as CustomEvent).detail?.id !== id) return
       const textarea = termRef.current?.querySelector('textarea') as HTMLTextAreaElement
       if (textarea && document.activeElement !== textarea) {
         term.focus()

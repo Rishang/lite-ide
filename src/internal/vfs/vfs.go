@@ -1,12 +1,12 @@
 package vfs
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
-	"sync"
 	"unicode/utf8"
 )
 
@@ -75,8 +75,6 @@ const (
 )
 
 var (
-	mu = &sync.RWMutex{}
-
 	// Default skip directories
 	skipDirs = map[string]bool{
 		"node_modules":  true,
@@ -638,12 +636,7 @@ func searchFileContent(path, rootPath, content string, matcher *regexp.Regexp) S
 }
 
 func hasNulByte(content []byte) bool {
-	for _, b := range content {
-		if b == 0 {
-			return true
-		}
-	}
-	return false
+	return bytes.IndexByte(content, 0) >= 0
 }
 
 func copyFile(src, dst string) error {

@@ -252,44 +252,38 @@ export function FileExplorer({
     return node
   }
 
-  const toggleFolder = useCallback(async (path: string) => {
+  const expandFolder = useCallback(async (folderPath: string) => {
+    await loadDirectoryContents(folderPath)
+  }, [loadDirectoryContents])
+
+  const toggleFolder = useCallback((path: string) => {
     setExpandedFolders(prev => {
       const newSet = new Set(prev)
       if (newSet.has(path)) {
         newSet.delete(path)
       } else {
         newSet.add(path)
-        const findNode = (nodes: FileNode[]): FileNode | null => {
-          for (const node of nodes) {
-            if (node.path === path) return node
-            if (node.children) {
-              const found = findNode(node.children)
-              if (found) return found
-            }
-          }
-          return null
-        }
-        const node = findNode(localTree)
-        if (node && (node.children && node.children.length > 0 || !node.loaded)) {
-          expandFolder(path)
-        }
       }
       return newSet
     })
-  }, [currentPath, localTree])
 
-  const expandFolder = useCallback(async (folderPath: string) => {
-    try {
-      await loadDirectoryContents(folderPath)
-      await fetch(`${config.apiEndpoint}/api/expand?root=${encodeURIComponent(currentPath)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: folderPath })
-      })
-    } catch {
-      // silently ignore expand errors
+    // Side effect outside the state setter
+    const findNode = (nodes: FileNode[]): FileNode | null => {
+      for (const node of nodes) {
+        if (node.path === path) return node
+        if (node.children) {
+          const found = findNode(node.children)
+          if (found) return found
+        }
+      }
+      return null
     }
-  }, [currentPath, loadDirectoryContents])
+    const node = findNode(localTree)
+    const isCurrentlyExpanded = expandedFolders.has(path)
+    if (!isCurrentlyExpanded && node && (!node.loaded || (node.children && node.children.length > 0))) {
+      expandFolder(path)
+    }
+  }, [expandedFolders, localTree, expandFolder])
 
   const apiCall = async (endpoint: string, method: string, body?: any) => {
     const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : '/' + endpoint
@@ -469,8 +463,10 @@ export function FileExplorer({
       // visually distinct but clearly in the same "selection" family.
       const isContextSelected = node.path === contextMenuNodePath
 
+      const isHidden = node.name.startsWith('.')
+
       return (
-        <div key={node.path} style={{ opacity: isCut ? 0.4 : 1 }}>
+        <div key={node.path} style={{ opacity: isCut ? 0.4 : isHidden ? 0.5 : 1 }}>
           <div
             className={cn(
               'flex items-center relative cursor-pointer text-[13px] select-none',

@@ -58,7 +58,6 @@ export function HomeContent() {
     !config.showEditor,
   );
   const [lastExplorerWidth, setLastExplorerWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
-  const [windowHeight, setWindowHeight] = useState(600);
   const [activePanel, setActivePanel] = useState<string>("files");
   const [markers, setMarkers] = useState<MarkerData[]>([]);
   const [searchTarget, setSearchTarget] = useState<{
@@ -81,13 +80,6 @@ export function HomeContent() {
   }, [searchParams]);
 
   useEffect(() => {
-    const updateWindowHeight = () => setWindowHeight(window.innerHeight);
-    updateWindowHeight();
-    window.addEventListener("resize", updateWindowHeight);
-    return () => window.removeEventListener("resize", updateWindowHeight);
-  }, []);
-
-  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ctrl+` — toggle terminal
       if (e.ctrlKey && (e.key === "`" || e.code === "Backquote")) {
@@ -102,7 +94,7 @@ export function HomeContent() {
             const newMinimized = !prev;
             if (!newMinimized) {
               setTimeout(() => {
-                window.dispatchEvent(new Event("focusTerminal"));
+                window.dispatchEvent(new Event("terminalPanelOpened"));
               }, 100);
             }
             return newMinimized;
@@ -312,7 +304,7 @@ export function HomeContent() {
       } finally {
         autosaveInFlightRef.current.delete(path);
       }
-    }, 1000);
+    }, 3000);
 
     return () => window.clearInterval(interval);
   }, [activeTab, currentPath]);
@@ -580,9 +572,9 @@ export function HomeContent() {
         {/* Terminal Panel */}
         {config.showTerminal && (
           <ResizablePanel
-            defaultHeight={config.showEditor ? 300 : windowHeight}
+            defaultHeight={config.showEditor ? 300 : window.innerHeight}
             minHeight={32}
-            maxHeight={windowHeight * 0.7}
+            maxHeight={window.innerHeight}
             isMaximized={isTerminalMaximized}
             isMinimized={isTerminalMinimized}
             className={`

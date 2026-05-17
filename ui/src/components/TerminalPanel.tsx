@@ -45,16 +45,23 @@ export function TerminalPanel({ onMaximize, onMinimize, onClose, isMaximized, is
   ])
   const [activeId, setActiveId] = useState<string>('term-1')
   const [hoveredId, setHoveredId] = useState<string | null>(null)
-  const termRefs = useRef<Map<string, HTMLDivElement | null>>(new Map())
 
   const sections: PanelSection[] = ['TERMINAL']
 
   // Auto-focus terminal when active instance changes
   useEffect(() => {
-    const el = termRefs.current.get(activeId) as any
-    if (el?.focusTerminal) {
-      setTimeout(() => el.focusTerminal(), 50)
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('focusTerminal', { detail: { id: activeId } }))
+    }, 50)
+  }, [activeId])
+
+  // Re-focus active terminal when the panel is opened via keyboard shortcut
+  useEffect(() => {
+    const handler = () => {
+      window.dispatchEvent(new CustomEvent('focusTerminal', { detail: { id: activeId } }))
     }
+    window.addEventListener('terminalPanelOpened', handler)
+    return () => window.removeEventListener('terminalPanelOpened', handler)
   }, [activeId])
 
   const addInstance = () => {
@@ -71,7 +78,6 @@ export function TerminalPanel({ onMaximize, onMinimize, onClose, isMaximized, is
     const next = instances.filter(i => i.id !== id)
     setInstances(next)
     if (activeId === id) setActiveId(next[next.length - 1].id)
-    termRefs.current.delete(id)
   }
 
   return (
@@ -118,11 +124,8 @@ export function TerminalPanel({ onMaximize, onMinimize, onClose, isMaximized, is
               <div
                 key={inst.id}
                 className={`h-full ${activeId === inst.id ? 'block' : 'hidden'}`}
-                ref={el => {
-                  if (el) termRefs.current.set(inst.id, el)
-                }}
               >
-                <Terminal />
+                <Terminal id={inst.id} />
               </div>
             ))
           }

@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 )
@@ -137,9 +138,24 @@ func handleFileWatch(w http.ResponseWriter, r *http.Request) {
 	w.(http.Flusher).Flush()
 
 	// Watch for events
+	var debounceTimer *time.Timer
+	sendTree := func() {
+		tree, err := vfs.GetTree(root)
+		if err != nil {
+			log.Printf("Failed to get tree after file change: %v", err)
+			return
+		}
+		treeData, _ := json.Marshal(tree)
+		fmt.Fprintf(w, "data: %s\n\n", treeData)
+		w.(http.Flusher).Flush()
+	}
+
 	for {
 		select {
 		case <-clientGone:
+			if debounceTimer != nil {
+				debounceTimer.Stop()
+			}
 			return
 		case event, ok := <-watcher.Events:
 			if !ok {
@@ -151,16 +167,11 @@ func handleFileWatch(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 
-			// Get updated tree and send it
-			tree, err := vfs.GetTree(root)
-			if err != nil {
-				log.Printf("Failed to get tree after file change: %v", err)
-				continue
+			// Coalesce rapid events — send at most once per 200ms
+			if debounceTimer != nil {
+				debounceTimer.Stop()
 			}
-
-			treeData, _ := json.Marshal(tree)
-			fmt.Fprintf(w, "data: %s\n\n", treeData)
-			w.(http.Flusher).Flush()
+			debounceTimer = time.AfterFunc(200*time.Millisecond, sendTree)
 
 			// If new directory created, add it to watch
 			if event.Op&fsnotify.Create != 0 {
@@ -228,50 +239,6 @@ func handleExpandFolder(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func addRecursiveWatch(watcher *fsnotify.Watcher, root string) error {
-	// Track directories we've already processed to avoid duplicates
-	processed := make(map[string]bool)
-	maxWatches := 1000 // Limit to prevent hitting system limits
-	watchCount := 0
-
-	return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return nil // Skip inaccessible files
-		}
-
-		if info.IsDir() {
-			// Skip problematic directories that commonly cause watch limit issues
-			base := filepath.Base(path)
-			if shouldSkipDirectory(base) {
-				return filepath.SkipDir
-			}
-
-			// Skip if we've already processed this directory
-			if processed[path] {
-				return nil
-			}
-			processed[path] = true
-
-			// Limit the number of watches to prevent system limits
-			if watchCount >= maxWatches {
-				for i := 0; i < 1; i++ {
-					log.Printf("Warning: reached maximum watch limit (%d), skipping remaining directories", maxWatches)
-				}
-				return filepath.SkipDir
-			}
-
-			// Add watch but don't fail on individual directory errors
-			if err := watcher.Add(path); err != nil {
-				// Log the error but continue - don't fail the entire operation
-				log.Printf("Warning: failed to add watch for %s: %v", path, err)
-				return nil
-			}
-			watchCount++
-		}
-		return nil
-	})
-}
-
 // addLazyWatch adds directories to watcher up to a specified depth
 func addLazyWatch(watcher *fsnotify.Watcher, root string, maxDepth int) error {
 	processed := make(map[string]bool)
@@ -334,59 +301,6 @@ func addLazyWatch(watcher *fsnotify.Watcher, root string, maxDepth int) error {
 	}
 
 	return walkDir(root, 0)
-}
-
-// addDirectoryWatch adds a specific directory and its immediate subdirectories to the watcher
-func addDirectoryWatch(watcher *fsnotify.Watcher, dirPath string) error {
-	watchCount := 0
-	maxWatches := 1000
-
-	// Add the directory itself
-	info, err := os.Stat(dirPath)
-	if err != nil {
-		return err
-	}
-
-	if !info.IsDir() {
-		return fmt.Errorf("path is not a directory: %s", dirPath)
-	}
-
-	base := filepath.Base(dirPath)
-	if shouldSkipDirectory(base) {
-		return nil
-	}
-
-	if err := watcher.Add(dirPath); err != nil {
-		return err
-	}
-	watchCount++
-
-	// Add immediate subdirectories
-	entries, err := os.ReadDir(dirPath)
-	if err != nil {
-		return nil
-	}
-
-	for _, entry := range entries {
-		if entry.IsDir() {
-			subPath := filepath.Join(dirPath, entry.Name())
-			base := filepath.Base(subPath)
-			if shouldSkipDirectory(base) {
-				continue
-			}
-
-			if watchCount >= maxWatches {
-				break
-			}
-
-			if err := watcher.Add(subPath); err != nil {
-				continue
-			}
-			watchCount++
-		}
-	}
-
-	return nil
 }
 
 // shouldSkipDirectory determines if a directory should be skipped for file watching
