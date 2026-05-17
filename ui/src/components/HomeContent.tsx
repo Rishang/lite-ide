@@ -572,9 +572,9 @@ export function HomeContent() {
         {/* Terminal Panel */}
         {config.showTerminal && (
           <ResizablePanel
-            defaultHeight={config.showEditor ? 300 : window.innerHeight}
-            minHeight={32}
-            maxHeight={window.innerHeight}
+            defaultHeight={config.showEditor ? 260 : window.innerHeight}
+            minHeight={96}
+            maxHeight={Math.floor(window.innerHeight * 0.75)}
             isMaximized={isTerminalMaximized}
             isMinimized={isTerminalMinimized}
             className={`

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import type { IDisposable } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { WebglAddon } from '@xterm/addon-webgl'
@@ -21,6 +22,8 @@ export function Terminal({ id }: { id: string }) {
       return
     }
 
+    let isDisposed = false
+    const disposables: IDisposable[] = []
     const term = new XTerminal({
       cursorBlink: true,
       theme: {
@@ -59,21 +62,33 @@ export function Terminal({ id }: { id: string }) {
 
     const fit = new FitAddon()
     fitAddon.current = fit
+    disposables.push(fit)
     term.loadAddon(fit)
-    term.loadAddon(new WebLinksAddon())
+    const webLinks = new WebLinksAddon()
+    disposables.push(webLinks)
+    term.loadAddon(webLinks)
     term.open(termRef.current)
 
-    // Use WebGL renderer for better performance, fall back to canvas if unavailable
     try {
       const webgl = new WebglAddon()
-      webgl.onContextLoss(() => { webgl.dispose() })
+      const contextLossDisposable = webgl.onContextLoss(() => {
+        if (!isDisposed) {
+          console.warn('Terminal WebGL context lost; falling back to default renderer')
+          webgl.dispose()
+        }
+      })
+      disposables.push(contextLossDisposable, webgl)
       term.loadAddon(webgl)
-    } catch (e) {
-      console.warn('WebGL addon failed, using canvas renderer:', e)
+    } catch (error) {
+      console.warn('WebGL addon failed, using default terminal renderer:', error)
     }
 
     // Keep PTY resize messages deduped so width changes do not spam the shell.
     const sendPtyResize = (cols: number, rows: number) => {
+      if (isDisposed) {
+        return
+      }
+
       if (cols <= 0 || rows <= 0) {
         return
       }
@@ -92,6 +107,10 @@ export function Terminal({ id }: { id: string }) {
     }
 
     const fitTerminal = () => {
+      if (isDisposed) {
+        return
+      }
+
       if (!termRef.current || termRef.current.offsetParent === null || !fitAddon.current) {
         return
       }
@@ -109,6 +128,10 @@ export function Terminal({ id }: { id: string }) {
     }
 
     const scheduleFit = (delay = 0) => {
+      if (isDisposed) {
+        return
+      }
+
       if (resizeTimeoutRef.current) {
         clearTimeout(resizeTimeoutRef.current)
       }
@@ -141,11 +164,18 @@ export function Terminal({ id }: { id: string }) {
     socketRef.current = socket
 
     socket.onopen = () => {
+      if (isDisposed) {
+        return
+      }
       // term.writeln('Connected to terminal')
       sendPtyResize(term.cols, term.rows)
     }
 
     socket.onmessage = (event) => {
+      if (isDisposed) {
+        return
+      }
+
       if (event.data instanceof ArrayBuffer) {
         const uint8Array = new Uint8Array(event.data)
         const text = new TextDecoder('utf-8').decode(uint8Array)
@@ -154,6 +184,10 @@ export function Terminal({ id }: { id: string }) {
         term.write(event.data)
       } else if (event.data instanceof Blob) {
         event.data.arrayBuffer().then(buffer => {
+          if (isDisposed) {
+            return
+          }
+
           const uint8Array = new Uint8Array(buffer)
           const text = new TextDecoder('utf-8').decode(uint8Array)
           term.write(text)
@@ -162,21 +196,35 @@ export function Terminal({ id }: { id: string }) {
     }
 
     socket.onerror = (err) => {
+      if (isDisposed) {
+        return
+      }
       term.writeln('\r\nConnection error.')
     }
 
     socket.onclose = () => {
+      if (isDisposed) {
+        return
+      }
       term.writeln('\r\nConnection closed.')
     }
 
-    term.onData((data) => {
+    disposables.push(term.onData((data) => {
+      if (isDisposed) {
+        return
+      }
+
       if (socket.readyState === WebSocket.OPEN) {
         socket.send(data)
       }
-    })
+    }))
 
     // Re-focus when clicked, but only if not already focused
     const handleClick = () => {
+      if (isDisposed) {
+        return
+      }
+
       const textarea = termRef.current?.querySelector('textarea') as HTMLTextAreaElement
       if (textarea && document.activeElement !== textarea) {
         term.focus()
@@ -187,6 +235,10 @@ export function Terminal({ id }: { id: string }) {
     // Add focus method accessible via DOM
     if (termRef.current) {
       (termRef.current as any).focusTerminal = () => {
+        if (isDisposed) {
+          return
+        }
+
         const textarea = termRef.current?.querySelector('textarea') as HTMLTextAreaElement
         if (textarea && document.activeElement !== textarea) {
           terminal.current?.focus()
@@ -196,6 +248,10 @@ export function Terminal({ id }: { id: string }) {
 
     // Listen for custom focus event
     const handleFocusTerminal = (e: Event) => {
+      if (isDisposed) {
+        return
+      }
+
       if ((e as CustomEvent).detail?.id !== id) return
       const textarea = termRef.current?.querySelector('textarea') as HTMLTextAreaElement
       if (textarea && document.activeElement !== textarea) {
@@ -206,7 +262,12 @@ export function Terminal({ id }: { id: string }) {
     window.addEventListener('focusTerminal', handleFocusTerminal)
 
     return () => {
+      isDisposed = true
       if (socketRef.current) {
+        socketRef.current.onopen = null
+        socketRef.current.onmessage = null
+        socketRef.current.onerror = null
+        socketRef.current.onclose = null
         socketRef.current.close()
       }
       if (resizeTimeoutRef.current) {
@@ -218,6 +279,13 @@ export function Terminal({ id }: { id: string }) {
       if (termRef.current) {
         termRef.current.removeEventListener('click', handleClick)
         delete (termRef.current as any).focusTerminal
+      }
+      for (const disposable of [...disposables].reverse()) {
+        try {
+          disposable.dispose()
+        } catch (error) {
+          console.warn('Terminal disposable cleanup error:', error)
+        }
       }
       term.dispose()
       terminal.current = null
