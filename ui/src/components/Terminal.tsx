@@ -288,9 +288,11 @@ export function Terminal({ id }: { id: string }) {
   }, [])
 
   return (
-    <div
-      className="h-full w-full bg-[#1f2329] px-3 py-2 outline-none [--terminal-bg:#1f2329] [--terminal-fg:#abb2bf] [&_.xterm]:h-full [&_.xterm-helpers]:top-2 [&_.xterm-viewport]:bg-[var(--terminal-bg)] [&_.xterm-screen]:focus:outline-none"
-      ref={termRef}
-    />
+    <div className="relative h-full w-full min-w-0 overflow-hidden">
+      <div
+        className="absolute inset-0 bg-[#1f2329] px-3 py-2 outline-none overflow-hidden [--terminal-bg:#1f2329] [--terminal-fg:#abb2bf] [&_.xterm]:h-full [&_.xterm]:w-full [&_.xterm]:overflow-hidden [&_.xterm-helpers]:top-2 [&_.xterm-viewport]:bg-[var(--terminal-bg)] [&_.xterm-screen]:focus:outline-none"
+        ref={termRef}
+      />
+    </div>
   )
 } 

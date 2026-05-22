@@ -173,12 +173,12 @@ export function TerminalPanel({ onMaximize, onMinimize, onClose, isMaximized, is
         </div>
       </div>
 
-      <div className={`flex-1 flex overflow-hidden bg-[#1f2329] ${isMinimized ? 'hidden' : ''}`}>
-        <div className="flex-1 overflow-hidden bg-[#1f2329]">
+      <div className={`flex-1 flex min-w-0 min-h-0 overflow-hidden bg-[#1f2329] ${isMinimized ? 'hidden' : ''}`}>
+        <div className="flex-1 min-w-0 min-h-0 overflow-hidden bg-[#1f2329]">
           {instances.map(inst => (
               <div
                 key={inst.id}
-                className={`h-full ${activeId === inst.id ? 'block' : 'hidden'}`}
+                className={`h-full w-full min-w-0 overflow-hidden ${activeId === inst.id ? 'block' : 'hidden'}`}
               >
                 <Terminal id={inst.id} />
               </div>
