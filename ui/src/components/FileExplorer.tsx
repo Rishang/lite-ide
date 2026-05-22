@@ -515,7 +515,7 @@ export function FileExplorer({
                   <ChevronRight className="w-4 h-4 mr-1 text-[#abb2bf] flex-shrink-0" />
                 )}
                 <Folder className={cn(
-                  'w-4 h-4 mr-2 flex-shrink-0',
+                  'w-4 h-4 mr-2 flex-shrink-0 fill-current',
                   isExpanded ? 'text-[#e5c07b]' : 'text-[#61afef]'
                 )} />
               </>

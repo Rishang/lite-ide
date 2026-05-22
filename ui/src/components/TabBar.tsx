@@ -29,7 +29,7 @@ export function TabBar({ tabs, activeTab, dirtyTabs, onTabSelect, onTabClose }: 
           <div
             key={tab}
             className={cn(
-              'flex items-center px-3 py-[6px] cursor-pointer text-[13px] min-w-0 relative select-none group',
+              'flex items-center px-3 py-[3px] cursor-pointer text-[12px] min-w-0 relative select-none group',
               isActive
                 ? 'bg-[#1f2329] text-white'
                 : 'bg-[#252a32] text-[#828997] hover:bg-[#252a32]/80'
@@ -38,7 +38,7 @@ export function TabBar({ tabs, activeTab, dirtyTabs, onTabSelect, onTabClose }: 
           >
             {/* Active tab top border */}
             {isActive && (
-              <div className="absolute top-0 left-0 right-0 h-[2px] bg-[#61afef]" />
+              <div className="absolute top-0 left-0 right-0 h-[1px] bg-[#e5c07b]" />
             )}
 
             {/* File icon */}
@@ -54,7 +54,7 @@ export function TabBar({ tabs, activeTab, dirtyTabs, onTabSelect, onTabClose }: 
             </span>
 
             {/* Dirty indicator or close button */}
-            <div className="ml-2 w-5 h-5 flex items-center justify-center flex-shrink-0">
+            <div className="ml-2 w-4 h-4 flex items-center justify-center flex-shrink-0">
               {isDirty && !isActive ? (
                 <span className="w-2 h-2 rounded-full bg-white/60 block" />
               ) : (
@@ -64,7 +64,7 @@ export function TabBar({ tabs, activeTab, dirtyTabs, onTabSelect, onTabClose }: 
                     isDirty
                       ? "text-white/60"
                       : "opacity-0 group-hover:opacity-100",
-                    "hover:bg-[#343b47]"
+                    "hover:text-[#e06c75] hover:bg-[#e06c75]/15"
                   )}
                   onClick={(e) => {
                     e.stopPropagation()
@@ -74,7 +74,7 @@ export function TabBar({ tabs, activeTab, dirtyTabs, onTabSelect, onTabClose }: 
                   {isDirty ? (
                     <span className="w-2 h-2 rounded-full bg-white/80 block" />
                   ) : (
-                    <X className="w-4 h-4" />
+                    <X className="w-3 h-3" />
                   )}
                 </button>
               )}

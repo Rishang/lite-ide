@@ -68,11 +68,11 @@ export function ResizablePanel({
           onMouseDown={e => { e.preventDefault(); setIsResizing(true); }}
           className="group relative h-[4px] shrink-0 cursor-ns-resize z-10"
         >
-          {/* Visible line */}
+          {/* Visible line — only on hover/resize */}
           <div
             className={[
               "absolute inset-x-0 top-[1.5px] h-[1px] transition-colors duration-150",
-              isResizing ? "bg-[#61afef]" : "bg-[#111318] group-hover:bg-[#61afef]",
+              isResizing ? "bg-[#61afef]" : "bg-transparent group-hover:bg-[#61afef]",
             ].join(" ")}
           />
           {/* Drag grip dots */}

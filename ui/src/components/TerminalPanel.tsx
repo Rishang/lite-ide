@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { X, Plus, Maximize2, ChevronDown, ChevronUp, PanelBottom } from 'lucide-react'
+import { X, Plus, Maximize2, ChevronDown, ChevronUp } from 'lucide-react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faTerminal } from '@fortawesome/free-solid-svg-icons'
 import dynamic from 'next/dynamic'
@@ -98,19 +98,62 @@ export function TerminalPanel({ onMaximize, onMinimize, onClose, isMaximized, is
 
   return (
     <div className="h-full flex flex-col bg-[#1f2329] select-none font-['Segoe_UI',system-ui,sans-serif] border-t border-[#2b3038]">
-      <div className="flex h-8 shrink-0 items-center justify-between border-b border-[#2b3038] bg-[#1b1f26]">
-        <div className="flex min-w-0 flex-1 items-center">
-          <div className="flex h-full items-center gap-2 px-3 text-[11px] font-semibold uppercase tracking-wide text-[#c4cad4]">
-            <PanelBottom size={13} className="text-[#7f8794]" />
-            Terminal
+      <div className="flex h-6 shrink-0 items-center justify-between bg-[#1b1f26]">
+        <div className="flex-1 overflow-hidden">
+          <div className="flex h-full items-center gap-0.5 overflow-x-auto scrollbar-thin px-1">
+            {instances.map(inst => {
+              const isActive = activeId === inst.id
+
+              return (
+                <div
+                  key={inst.id}
+                  role="tab"
+                  tabIndex={0}
+                  aria-selected={isActive}
+                  onClick={() => selectInstance(inst.id)}
+                  onKeyDown={event => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      selectInstance(inst.id)
+                    }
+                  }}
+                  className={[
+                    'group relative flex h-5 shrink-0 cursor-pointer items-center gap-2 px-2 text-[11px] outline-none transition-colors duration-75 focus-visible:bg-[#252a32]',
+                    isActive
+                      ? 'bg-[#252a32] text-[#d7dce5]'
+                      : 'text-[#7f8794] hover:bg-[#222832] hover:text-[#c4cad4]',
+                  ].join(' ')}
+                >
+                  {isActive && (
+                    <span className="absolute left-1 right-1 bottom-0 h-[1px] bg-[#e5c07b]" />
+                  )}
+                  <FontAwesomeIcon icon={faTerminal} className="shrink-0 text-[10px] text-[#6f7784] w-[11px]" />
+                  <span className="truncate normal-case tracking-normal font-normal">{inst.label}</span>
+                  {isActive && instances.length > 1 && (
+                    <button
+                      type="button"
+                      aria-label={`Close ${inst.label}`}
+                      onClick={closeActiveInstance}
+                      className="ml-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded text-[#7f8794] hover:bg-[#343b47] hover:text-[#d7dce5]"
+                    >
+                      <X size={10} />
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+            <button
+              type="button"
+              title="New Terminal"
+              onClick={addInstance}
+              className="ml-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-[#828997] hover:text-[#d7dce5] hover:bg-[#252a32] transition-colors duration-100"
+            >
+              <Plus size={13} />
+            </button>
           </div>
         </div>
 
         <div className="flex items-center shrink-0 px-1 gap-0.5">
-          <ActionBtn title="New Terminal" onClick={addInstance}>
-            <Plus size={14} />
-          </ActionBtn>
-          <Divider />
           {onMinimize && (
             <ActionBtn title={isMinimized ? "Restore Panel" : "Minimize Panel"} onClick={onMinimize}>
               {isMinimized ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -142,52 +185,6 @@ export function TerminalPanel({ onMaximize, onMinimize, onClose, isMaximized, is
             ))
           }
         </div>
-
-        <div className="w-[168px] shrink-0 border-l border-[#2b3038] bg-[#1b1f26] py-1">
-          {instances.map(inst => {
-            const isActive = activeId === inst.id
-
-            return (
-              <div
-                key={inst.id}
-                role="tab"
-                tabIndex={0}
-                aria-selected={isActive}
-                onClick={() => selectInstance(inst.id)}
-                onKeyDown={event => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault()
-                    selectInstance(inst.id)
-                  }
-                }}
-                className={[
-                  'group relative mx-1 flex h-8 cursor-pointer items-center justify-between rounded px-2.5 text-[12px] outline-none transition-colors duration-75 focus-visible:bg-[#252a32]',
-                  isActive
-                    ? 'bg-[#252a32] text-[#d7dce5]'
-                    : 'text-[#7f8794] hover:bg-[#222832] hover:text-[#c4cad4]',
-                ].join(' ')}
-              >
-                {isActive && (
-                  <span className="absolute left-0 top-1 bottom-1 w-[2px] rounded-r bg-[#61afef]" />
-                )}
-                <div className="flex min-w-0 items-center gap-2 pl-1">
-                  <FontAwesomeIcon icon={faTerminal} className="shrink-0 text-[10px] text-[#6f7784] w-[11px]" />
-                  <span className="truncate">{inst.label}</span>
-                </div>
-                {isActive && instances.length > 1 && (
-                  <button
-                    type="button"
-                    aria-label={`Close ${inst.label}`}
-                    onClick={closeActiveInstance}
-                    className="ml-1 flex h-5 w-5 shrink-0 items-center justify-center rounded text-[#7f8794] hover:bg-[#343b47] hover:text-[#d7dce5]"
-                  >
-                    <X size={11} />
-                  </button>
-                )}
-              </div>
-            )
-          })}
-        </div>
       </div>
     </div>
   )
@@ -208,7 +205,7 @@ function ActionBtn({
     <button
       title={title}
       onClick={onClick}
-      className="flex items-center justify-center w-6 h-6 rounded text-[#828997] hover:text-[#d7dce5] hover:bg-[#252a32] transition-colors duration-100"
+      className="flex items-center justify-center w-5 h-5 rounded text-[#828997] hover:text-[#d7dce5] hover:bg-[#252a32] transition-colors duration-100"
     >
       {children}
     </button>

@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react'
 import type { IDisposable } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
-import { WebglAddon } from '@xterm/addon-webgl'
+import { CanvasAddon } from '@xterm/addon-canvas'
 import { Terminal as XTerminal } from '@xterm/xterm'
 import '@xterm/xterm/css/xterm.css'
 import { config } from '@/utils/config'
@@ -70,17 +70,11 @@ export function Terminal({ id }: { id: string }) {
     term.open(termRef.current)
 
     try {
-      const webgl = new WebglAddon()
-      const contextLossDisposable = webgl.onContextLoss(() => {
-        if (!isDisposed) {
-          console.warn('Terminal WebGL context lost; falling back to default renderer')
-          webgl.dispose()
-        }
-      })
-      disposables.push(contextLossDisposable, webgl)
-      term.loadAddon(webgl)
+      const canvas = new CanvasAddon()
+      disposables.push(canvas)
+      term.loadAddon(canvas)
     } catch (error) {
-      console.warn('WebGL addon failed, using default terminal renderer:', error)
+      console.warn('Canvas addon failed, using default terminal renderer:', error)
     }
 
     // Keep PTY resize messages deduped so width changes do not spam the shell.
