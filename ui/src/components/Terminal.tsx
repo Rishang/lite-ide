@@ -135,6 +135,8 @@ export function Terminal({ id }: { id: string }) {
 
     // Delay fit to ensure container is properly sized
     scheduleFit(100)
+    // Second fit pass once the canvas renderer settles its cell metrics
+    setTimeout(() => fitTerminal(), 300)
 
     // Focus the terminal after opening
     term.focus()
@@ -288,11 +290,14 @@ export function Terminal({ id }: { id: string }) {
   }, [])
 
   return (
-    <div className="relative h-full w-full min-w-0 overflow-hidden">
-      <div
-        className="absolute inset-0 bg-[#1f2329] px-3 py-2 outline-none overflow-hidden [--terminal-bg:#1f2329] [--terminal-fg:#abb2bf] [&_.xterm]:h-full [&_.xterm]:w-full [&_.xterm]:overflow-hidden [&_.xterm-helpers]:top-2 [&_.xterm-viewport]:bg-[var(--terminal-bg)] [&_.xterm-screen]:focus:outline-none"
-        ref={termRef}
-      />
+    <div className="relative flex flex-col h-full w-full min-w-0 overflow-hidden bg-[#1f2329]">
+      <div className="relative flex-1 min-h-0 min-w-0 overflow-hidden">
+        <div
+          className="absolute inset-0 bg-[#1f2329] px-3 pt-2 outline-none overflow-hidden [--terminal-bg:#1f2329] [--terminal-fg:#abb2bf] [&_.xterm]:!w-full [&_.xterm-helpers]:top-2 [&_.xterm-viewport]:bg-[var(--terminal-bg)] [&_.xterm-screen]:focus:outline-none"
+          ref={termRef}
+        />
+      </div>
+      <div className="shrink-0 h-4 bg-[#1f2329]" />
     </div>
   )
 } 
